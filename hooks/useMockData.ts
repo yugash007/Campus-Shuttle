@@ -87,6 +87,8 @@ const initialDriverData: Driver = {
     { day: 'Sat', earnings: 2500 },
     { day: 'Sun', earnings: 1600 },
   ],
+  // FIX: Added missing 'hasCompletedOnboarding' property to conform to the Driver type.
+  hasCompletedOnboarding: true,
 };
 
 

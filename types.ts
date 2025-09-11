@@ -27,6 +27,14 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface Transaction {
+  id: string;
+  type: 'credit' | 'debit';
+  amount: number;
+  date: string; // ISO string
+  description: string;
+}
+
 export interface Ride {
   id: string;
   pickup: string;
@@ -45,6 +53,25 @@ export interface Ride {
   co2Savings?: number; // in kg
   rating?: number;
   feedback?: string;
+  bonus?: number; // For driver incentives
+  completionDate?: string; // ISO string for when the ride was completed
+}
+
+export interface ScheduledEvent {
+  id: string;
+  name: string;
+  days: string[];
+  time: string;
+  location: string;
+}
+
+export interface RidePlan {
+  id: string;
+  day: string;
+  pickupTime: string;
+  destination: string;
+  forEvent: string;
+  reason: string;
 }
 
 export interface Student {
@@ -57,7 +84,19 @@ export interface Student {
   rating: number;
   activeRideId: string | null;
   recentRides?: { [rideId: string]: boolean };
+  transactionHistory?: { [transactionId: string]: boolean };
   totalCo2Savings?: number; // in kg
+  age?: string;
+  gender?: string;
+  mobileNumber?: string;
+  photoURL?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+  };
+  isOnWaitlist?: boolean;
+  weeklySchedule?: { [eventId: string]: boolean };
+  ridePlans?: { [planId: string]: boolean };
 }
 
 export interface Driver {
@@ -74,4 +113,25 @@ export interface Driver {
   weeklyEarnings: { day: string; earnings: number }[];
   isEV?: boolean;
   totalCo2Savings?: number; // in kg
+  hasCompletedOnboarding: boolean;
+  onboardingBonusAwarded?: boolean;
+  vehicleDetails?: {
+    make: string;
+    model: string;
+    licensePlate: string;
+  };
+  age?: string;
+  gender?: string;
+  mobileNumber?: string;
+  photoURL?: string;
+  isVerified?: boolean;
+}
+
+export interface FareBreakdownDetails {
+  baseFare: number;
+  distanceCharge: number;
+  timeCharge: number;
+  surgeMultiplier: number;
+  surgeCharge: number;
+  totalFare: number;
 }

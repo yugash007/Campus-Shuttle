@@ -69,21 +69,23 @@ const StudentHeatmap: React.FC<StudentHeatmapProps> = ({ rides }) => {
           <div key={slot} className="heatmap-time-label">{slot}</div>
         ))}
       </div>
-      <div className="heatmap-body">
+      <div className="heatmap-body" role="grid" aria-label="Student ride activity by day and time">
         {days.map(day => (
-          <div key={day} className="heatmap-row">
-            <div className="heatmap-day-label" style={{ flex: '0 0 50px' }}>{day}</div>
+          <div key={day} className="heatmap-row" role="row">
+            <div className="heatmap-day-label" style={{ flex: '0 0 50px' }} role="rowheader">{day}</div>
             {timeSlots.map(slot => {
               const count = heatmapData.grid[day][slot];
               const level = getColorLevel(count, heatmapData.maxRides);
               return (
-                <div 
-                  key={slot} 
-                  className="heatmap-cell" 
+                <button
+                  key={slot}
+                  type="button"
+                  className="heatmap-cell"
                   data-level={level}
-                >
-                    <div className="heatmap-tooltip">{count} rides</div>
-                </div>
+                  aria-label={`${count} rides on ${day}, ${slot}`}
+                  title={`${count} rides`}
+                  role="gridcell"
+                />
               );
             })}
           </div>

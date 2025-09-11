@@ -9,9 +9,8 @@ const MapPlaceholder: React.FC<MapPlaceholderProps> = ({ className = '' }) => {
   return (
     <div 
       // FIX: Merged the passed className with existing classes to allow for custom styling.
-      className={`w-100 rounded-3 d-flex align-items-center justify-content-center text-center ${className}`}
+      className={`w-100 h-100 rounded-3 d-flex align-items-center justify-content-center text-center ${className}`}
       style={{ 
-        minHeight: '200px', 
         background: 'rgba(0, 0, 0, 0.25)',
         border: '1px solid rgba(255, 255, 255, 0.15)',
       }}

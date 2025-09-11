@@ -29,7 +29,7 @@ import React, { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 
 interface GoogleMapProps {
-  driverLocation: google.maps.LatLngLiteral;
+  driverLocation: google.maps.LatLngLiteral | null;
   userLocation: google.maps.LatLngLiteral | null;
 }
 
@@ -65,14 +65,15 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ driverLocation, userLocation }) =
 
     const initialCenter = userLocation || driverLocation;
 
-    mapInstance.current = new google.maps.Map(mapRef.current, {
-      center: initialCenter,
-      zoom: 15,
-      mapId: 'CAMPUS_SHUTTLE_MAP_LIVE',
-      disableDefaultUI: true,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation]); // Rerun init if user location becomes available
+    if (initialCenter) {
+        mapInstance.current = new google.maps.Map(mapRef.current, {
+          center: initialCenter,
+          zoom: 15,
+          mapId: 'CAMPUS_SHUTTLE_MAP_LIVE',
+          disableDefaultUI: true,
+        });
+    }
+  }, [userLocation, driverLocation]);
 
   // Effect for updating markers and bounds
   useEffect(() => {
@@ -90,6 +91,11 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ driverLocation, userLocation }) =
             });
         }
         driverMarker.current.position = driverLocation;
+        if (!driverMarker.current.map) {
+            driverMarker.current.map = mapInstance.current;
+        }
+    } else if (driverMarker.current) {
+        driverMarker.current.map = null;
     }
 
     // Update or create user marker
@@ -122,7 +128,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ driverLocation, userLocation }) =
 
   }, [driverLocation, userLocation]);
 
-  return <div ref={mapRef} className="w-100 rounded-3" style={{ height: '100%', minHeight: '300px' }} />;
+  return <div ref={mapRef} className="w-100 rounded-3" style={{ height: '100%' }} />;
 };
 
 export default GoogleMap;

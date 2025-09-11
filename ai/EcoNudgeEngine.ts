@@ -29,74 +29,79 @@ const decideAction = (state: RLState): RLAction => {
     if (state.timeOfDay === 'night' && state.isSoloRide) {
         return 'nudge';
     }
-
-    // Default action for all other states
+    // Default action: do nothing
     return 'do_nothing';
 };
 
 /**
- * The main function for the student-facing nudge system.
- * It analyzes the ride details and decides whether to offer an eco-friendly alternative.
- * 
- * @param rideDetails The original ride details requested by the student.
- * @returns A Nudge object if an eco-friendly alternative is offered, otherwise null.
+ * The main entry point for the student-facing nudge engine.
+ *
+ * @param rideDetails The details of the ride the student is about to book.
+ * @returns A nudge object if an eco-friendly alternative is suggested, otherwise null.
  */
 export const getStudentNudge = (rideDetails: Omit<Ride, 'id' | 'studentId' | 'date' | 'status'>): Nudge | null => {
-    const currentHour = new Date().getHours();
+    const bookingTime = rideDetails.scheduledTime ? new Date(rideDetails.scheduledTime) : new Date();
+    const hour = bookingTime.getHours();
     
-    // 1. Define the current state based on the input
     const state: RLState = {
-        timeOfDay: (currentHour >= 21 || currentHour < 6) ? 'night' : 'day',
+        timeOfDay: (hour >= 21 || hour < 6) ? 'night' : 'day',
         isSoloRide: rideDetails.type === RideType.SOLO,
     };
 
-    // 2. Get the action from our simulated PPO model
     const action = decideAction(state);
 
-    // 3. If the action is to nudge, create the nudge details
     if (action === 'nudge') {
-        // Create a compelling offer
-        const newFare = rideDetails.fare * 0.75; // 25% discount
-        const co2Savings = 1.5; // Estimated 1.5kg CO2 saved
+        const discount = 0.25; // 25% discount for switching
+        const newFare = rideDetails.fare * (1 - discount);
+        const co2Savings = 1.2; // kg of CO2 saved by switching
 
-        const modifiedRideDetails: Omit<Ride, 'id' | 'studentId' | 'date' | 'status'> = {
+        const modifiedRide: Omit<Ride, 'id' | 'studentId' | 'date' | 'status'> = {
             ...rideDetails,
             type: RideType.SHARED,
             fare: newFare,
-            groupSize: 2,
             co2Savings: co2Savings,
         };
 
-        const message = `Save the planet & your wallet! Switch to a shared EV ride?`;
-        
         return {
-            message,
-            modifiedRideDetails,
+            message: `Save ${discount * 100}% and reduce your carbon footprint! An eco-friendly shared ride is available.`,
+            modifiedRideDetails: modifiedRide,
         };
     }
 
-    return null; // Do nothing
+    return null;
 };
 
 /**
- * Calculates bonuses and CO2 savings for a completed ride.
+ * Calculates bonuses for drivers based on eco-friendly behavior and other incentives.
+ *
  * @param ride The completed ride object.
  * @param driver The driver who completed the ride.
- * @returns An object with the calculated bonus and CO2 savings.
+ * @param completionDate The time the ride was marked as complete. Defaults to now.
+ * @returns An object containing the calculated bonus and CO2 savings.
  */
-export const calculateDriverBonus = (ride: Ride, driver: Driver): { bonus: number; co2Savings: number } => {
+export const calculateDriverBonus = (ride: Ride, driver: Driver, completionDate: Date = new Date()): { bonus: number; co2Savings: number } => {
     let bonus = 0;
     let co2Savings = 0;
 
-    // Reward for using an EV
-    if (driver.isEV) {
-        bonus += 10; // ₹10 EV bonus
-        co2Savings += 1.5; // Base saving for an EV ride
+    // Base CO2 savings for any ride
+    co2Savings += 0.2;
+
+    // Night-shift incentive (9 PM to 6 AM)
+    const rideHour = completionDate.getHours();
+    if (rideHour >= 21 || rideHour < 6) {
+        bonus += 20.00; // Flat ₹20 bonus for night rides
     }
 
-    // Additional reward for a shared ride
+    // Bonus for shared rides (encourages efficiency)
     if (ride.type === RideType.SHARED) {
-        co2Savings += 0.8; // Extra saving for a shared ride
+        bonus += 15.00;
+        co2Savings += 1.0; // Higher savings for shared rides
+    }
+    
+    // Bonus for using an Electric Vehicle (EV)
+    if (driver.isEV) {
+        bonus += 10.00;
+        co2Savings += 1.5; // Significant savings for EVs
     }
 
     return { bonus, co2Savings };
