@@ -1,0 +1,7 @@
+{
+  "name": "Campus Shuttle",
+  "description": "A Progressive Web App for a campus shuttle service, connecting students and drivers. Features include real-time booking, live tracking, and driver incentives.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
