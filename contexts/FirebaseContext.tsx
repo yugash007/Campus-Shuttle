@@ -1,9 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import firebase from 'firebase/compat/app';
 import { auth, database, storage } from '../firebase';
 import { ref, onValue, set, get, update, remove, push, query, orderByChild } from 'firebase/database';
-import { User, Student, Driver, Ride, RideStatus, UserRole, Transaction, ScheduledEvent, RidePlan } from '../types';
+import { User, Student, Driver, Ride, RideStatus, UserRole, Transaction, ScheduledEvent, RidePlan, RideType } from '../types';
 import { calculateDriverBonus } from '../ai/EcoNudgeEngine';
 import { useNotification } from './NotificationContext';
 
@@ -511,6 +510,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         let totalBonus = regularBonus;
         let newOnboardingBonusAwarded = driver.onboardingBonusAwarded || false;
     
+        // Check for onboarding bonus eligibility
         if (!driver.onboardingBonusAwarded && (driver.totalRides + 1) >= 10) {
             totalBonus += 250.00;
             newOnboardingBonusAwarded = true;
@@ -518,54 +518,67 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     
         const updates: { [key: string]: any } = {};
+
+        // Update ride object
         updates[`/rides/${rideId}/status`] = RideStatus.COMPLETED;
         updates[`/rides/${rideId}/completionDate`] = completionTime.toISOString();
         updates[`/rides/${rideId}/co2Savings`] = co2Savings;
         updates[`/rides/${rideId}/bonus`] = totalBonus;
     
-        const studentSnapshot = await get(ref(database, `students/${activeRide.studentId}`));
-        if (studentSnapshot.exists()) {
-            const studentData = studentSnapshot.val() as Student;
-
-            // Create a debit transaction
-            const newTransactionRef = push(ref(database, 'transactions'));
-            const transactionId = newTransactionRef.key!;
-            const debitTransaction: Transaction = {
-                id: transactionId,
-                type: 'debit',
-                amount: activeRide.fare,
-                date: completionTime.toISOString(),
-                description: `Ride to ${activeRide.destination}`
-            };
-
-            const newStudentCo2 = (studentData.totalCo2Savings || 0) + co2Savings;
-            updates[`/transactions/${transactionId}`] = debitTransaction;
-            updates[`/students/${activeRide.studentId}/activeRideId`] = null;
-            updates[`/students/${activeRide.studentId}/recentRides/${rideId}`] = true;
-            updates[`/students/${activeRide.studentId}/totalCo2Savings`] = newStudentCo2;
-            updates[`/students/${activeRide.studentId}/walletBalance`] = studentData.walletBalance - activeRide.fare;
-            updates[`/students/${activeRide.studentId}/transactionHistory/${transactionId}`] = true;
+        // Create a debit transaction for student
+        const newTransactionRef = push(ref(database, 'transactions'));
+        const transactionId = newTransactionRef.key!;
+        const debitTransaction: Transaction = {
+            id: transactionId,
+            type: 'debit',
+            amount: activeRide.fare,
+            date: completionTime.toISOString(),
+            description: `Ride to ${activeRide.destination}`
+        };
+        updates[`/transactions/${transactionId}`] = debitTransaction;
+        
+        // Update student object
+        const studentId = activeRide.studentId;
+        updates[`/students/${studentId}/activeRideId`] = null;
+        updates[`/students/${studentId}/recentRides/${rideId}`] = true;
+        updates[`/students/${studentId}/transactionHistory/${transactionId}`] = true;
+        
+        // Use atomic increments for student stats
+        updates[`/students/${studentId}/totalRides`] = firebase.database.ServerValue.increment(1);
+        if (activeRide.type === RideType.SHARED) {
+            updates[`/students/${studentId}/sharedRides`] = firebase.database.ServerValue.increment(1);
         }
-    
-        const newDriverCo2 = (driver.totalCo2Savings || 0) + co2Savings;
+        updates[`/students/${studentId}/totalCo2Savings`] = firebase.database.ServerValue.increment(co2Savings);
+        updates[`/students/${studentId}/walletBalance`] = firebase.database.ServerValue.increment(-activeRide.fare);
+        
+        // Update driver object
         updates[`/drivers/${authUser.uid}/currentRideId`] = null;
-        updates[`/drivers/${authUser.uid}/earnings`] = driver.earnings + activeRide.fare + totalBonus;
-        updates[`/drivers/${authUser.uid}/totalRides`] = driver.totalRides + 1;
-        updates[`/drivers/${authUser.uid}/totalCo2Savings`] = newDriverCo2;
         if (newOnboardingBonusAwarded) {
             updates[`/drivers/${authUser.uid}/onboardingBonusAwarded`] = true;
         }
+
+        // Use atomic increments for driver stats
+        updates[`/drivers/${authUser.uid}/earnings`] = firebase.database.ServerValue.increment(activeRide.fare + totalBonus);
+        updates[`/drivers/${authUser.uid}/totalRides`] = firebase.database.ServerValue.increment(1);
+        updates[`/drivers/${authUser.uid}/totalCo2Savings`] = firebase.database.ServerValue.increment(co2Savings);
     
         await update(ref(database), updates);
     };
     
     const submitRating = async (rideId: string, driverId: string, rating: number, feedback: string) => {
+        // Check if the user is a student before proceeding
+        if (!authUser || authUser.role !== UserRole.STUDENT) {
+            showNotification('Error', 'Only students can rate rides.');
+            return;
+        }
+    
         try {
             const driverRef = ref(database, `drivers/${driverId}`);
             const driverSnapshot = await get(driverRef);
     
             if (!driverSnapshot.exists()) {
                 console.error("Driver not found for rating.");
+                showNotification('Error', 'Could not find driver details to submit rating.');
                 return;
             }
     
@@ -584,10 +597,29 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                 updates[`/rides/${rideId}/feedback`] = feedback;
             }
     
+            // Re-calculate and sync total rides for the student to ensure accuracy.
+            const allRidesSnapshot = await get(ref(database, 'rides'));
+            if (allRidesSnapshot.exists()) {
+                const allRidesData = allRidesSnapshot.val();
+                const ridesList: Ride[] = Object.values(allRidesData);
+    
+                const studentCompletedRides = ridesList.filter(
+                    ride => ride.studentId === authUser.uid && ride.status === RideStatus.COMPLETED
+                );
+                
+                const totalRidesCount = studentCompletedRides.length;
+                const sharedRidesCount = studentCompletedRides.filter(ride => ride.type === RideType.SHARED).length;
+    
+                updates[`/students/${authUser.uid}/totalRides`] = totalRidesCount;
+                updates[`/students/${authUser.uid}/sharedRides`] = sharedRidesCount;
+            }
+    
             await update(ref(database), updates);
+            showNotification('Feedback Received', 'Thank you for rating your ride!');
     
         } catch (error) {
             console.error("Error submitting rating:", error);
+            showNotification('Error', 'Failed to submit rating. Please try again.');
         }
     };
 

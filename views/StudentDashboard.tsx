@@ -18,6 +18,8 @@ import EcoAnalytics from '../components/EcoAnalytics';
 import { useNotification } from '../contexts/NotificationContext';
 import { calculateFare } from '../ai/FareCalculator';
 import FareBreakdownModal from '../components/FareBreakdownModal';
+import { database } from '../firebase';
+import { ref, get } from 'firebase/database';
 
 const MOCK_PICKUP_COORDS = { lat: 13.6288, lng: 79.4192 };
 const MOCK_DESTINATION_COORDS = { lat: 13.6330, lng: 79.4137 };
@@ -62,7 +64,7 @@ const StudentDashboard: React.FC = () => {
     const [rideToRate, setRideToRate] = useState<{ride: Ride, driver: Driver | null} | null>(null);
     const [rating, setRating] = useState(0);
     const [feedback, setFeedback] = useState('');
-    const completedRideRef = useRef<{ride: Ride, driver: Driver | null} | null>(null);
+    const prevRecentRidesLength = useRef(recentRides.length);
 
     // State for fare calculation
     const [fareDetails, setFareDetails] = useState<FareBreakdownDetails | null>(null);
@@ -107,13 +109,34 @@ const StudentDashboard: React.FC = () => {
 
     // Check for completed rides to show rating modal
     useEffect(() => {
-        if (!activeRide && student?.activeRideId && completedRideRef.current?.ride.id === student.activeRideId) {
-            setRideToRate(completedRideRef.current);
-            completedRideRef.current = null;
-        } else if (activeRide && driverForRide) {
-            completedRideRef.current = { ride: activeRide, driver: driverForRide };
+        // When a new ride is added to history, check if it needs rating.
+        if (recentRides.length > prevRecentRidesLength.current) {
+            const lastRide = recentRides[0]; // Assuming sorted by date desc
+
+            // Check if it's a completed ride and doesn't have a rating yet
+            if (lastRide && lastRide.status === RideStatus.COMPLETED && lastRide.rating === undefined) {
+                
+                const fetchDriver = async (driverId: string) => {
+                    try {
+                        const driverSnapshot = await get(ref(database, `drivers/${driverId}`));
+                        if (driverSnapshot.exists()) {
+                            return driverSnapshot.val() as Driver;
+                        }
+                    } catch (error) {
+                        console.error("Error fetching driver for rating modal:", error);
+                    }
+                    return null;
+                };
+
+                if (lastRide.driverId) {
+                    fetchDriver(lastRide.driverId).then(driver => {
+                        setRideToRate({ ride: lastRide, driver });
+                    });
+                }
+            }
         }
-    }, [activeRide, student?.activeRideId, driverForRide]);
+        prevRecentRidesLength.current = recentRides.length;
+    }, [recentRides]);
 
     const handleBookingAction = () => {
         if (!fareDetails) {

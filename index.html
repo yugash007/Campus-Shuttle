@@ -526,6 +526,7 @@
             flex: 1; aspect-ratio: 1 / 1; border-radius: 4px;
             background-color: var(--heatmap-cell-bg);
             transition: all 0.2s ease; position: relative; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
         }
         .heatmap-cell:hover { transform: scale(1.1); border: 1px solid var(--body-text-color); z-index: 10; }
         .heatmap-cell[data-level="1"] { background-color: rgba(203, 161, 53, 0.25); }
@@ -536,6 +537,18 @@
         body.light-theme .heatmap-cell[data-level="2"] { background-color: rgba(13, 110, 253, 0.5); }
         body.light-theme .heatmap-cell[data-level="3"] { background-color: rgba(13, 110, 253, 0.75); }
         body.light-theme .heatmap-cell[data-level="4"] { background-color: rgba(13, 110, 253, 1); }
+        .heatmap-cell span {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.7);
+            pointer-events: none; /* Make sure the span doesn't interfere with button events */
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+        .heatmap-cell[data-level="3"] span,
+        .heatmap-cell[data-level="4"] span {
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+        }
 
         .notification-toast {
             position: fixed; top: 20px; right: 20px;

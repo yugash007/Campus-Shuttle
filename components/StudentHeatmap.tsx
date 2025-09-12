@@ -4,9 +4,10 @@ import { Ride, RideStatus } from '../types';
 
 interface StudentHeatmapProps {
   rides: Ride[];
+  driverId: string;
 }
 
-const StudentHeatmap: React.FC<StudentHeatmapProps> = ({ rides }) => {
+const StudentHeatmap: React.FC<StudentHeatmapProps> = ({ rides, driverId }) => {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const timeSlots = [
     '6-8am', '8-10am', '10-12pm', '12-2pm', '2-4pm', '4-6pm', '6-8pm', '8-10pm'
@@ -17,11 +18,11 @@ const StudentHeatmap: React.FC<StudentHeatmapProps> = ({ rides }) => {
   };
 
   const heatmapData = React.useMemo(() => {
-    const grid: { [key: string]: { [key: string]: number } } = {};
+    const grid: { [key: string]: { [key: string]: { total: number; driver: number } } } = {};
     days.forEach(day => {
       grid[day] = {};
       timeSlots.forEach(slot => {
-        grid[day][slot] = 0;
+        grid[day][slot] = { total: 0, driver: 0 };
       });
     });
 
@@ -34,7 +35,10 @@ const StudentHeatmap: React.FC<StudentHeatmapProps> = ({ rides }) => {
 
         for (const [slot, hours] of Object.entries(timeSlotMap)) {
           if (hours.includes(hour)) {
-            grid[dayOfWeek][slot]++;
+            grid[dayOfWeek][slot].total++;
+            if (ride.driverId === driverId) {
+                grid[dayOfWeek][slot].driver++;
+            }
             break;
           }
         }
@@ -42,15 +46,15 @@ const StudentHeatmap: React.FC<StudentHeatmapProps> = ({ rides }) => {
       
     let maxRides = 0;
     Object.values(grid).forEach(dayData => {
-        Object.values(dayData).forEach(count => {
-            if (count > maxRides) {
-                maxRides = count;
+        Object.values(dayData).forEach(cellData => {
+            if (cellData.total > maxRides) {
+                maxRides = cellData.total;
             }
         });
     });
 
     return { grid, maxRides };
-  }, [rides]);
+  }, [rides, driverId]);
 
   const getColorLevel = (count: number, max: number) => {
     if (count === 0 || max === 0) return 0;
@@ -75,18 +79,26 @@ const StudentHeatmap: React.FC<StudentHeatmapProps> = ({ rides }) => {
           <div key={day} className="heatmap-row" role="row">
             <div className="heatmap-day-label" style={{ flex: '0 0 50px' }} role="rowheader">{day}</div>
             {timeSlots.map(slot => {
-              const count = heatmapData.grid[day][slot];
-              const level = getColorLevel(count, heatmapData.maxRides);
+              const cellData = heatmapData.grid[day][slot];
+              const totalCount = cellData.total;
+              const driverCount = cellData.driver;
+              const level = getColorLevel(totalCount, heatmapData.maxRides);
+              const title = totalCount > 0 
+                ? `${totalCount} total ride${totalCount !== 1 ? 's' : ''}. You accepted ${driverCount}.`
+                : 'No rides in this slot.';
+
               return (
                 <button
                   key={slot}
                   type="button"
                   className="heatmap-cell"
                   data-level={level}
-                  aria-label={`${count} rides on ${day}, ${slot}`}
-                  title={`${count} rides`}
+                  aria-label={`${totalCount} rides on ${day}, ${slot}. You accepted ${driverCount}.`}
+                  title={title}
                   role="gridcell"
-                />
+                >
+                    {totalCount > 0 && <span>{totalCount}</span>}
+                </button>
               );
             })}
           </div>

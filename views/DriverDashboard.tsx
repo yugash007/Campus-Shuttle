@@ -7,7 +7,7 @@ import EcoAnalytics from '../components/EcoAnalytics';
 import StudentHeatmap from '../components/StudentHeatmap';
 
 const DriverDashboard: React.FC = () => {
-    const { driver, activeRide, rideRequests, toggleDriverStatus, handleRideRequest, completeRide, allRides, waitlist } = useFirebase();
+    const { driver, authUser, activeRide, rideRequests, toggleDriverStatus, handleRideRequest, completeRide, allRides, waitlist } = useFirebase();
     const { showNotification } = useNotification();
     const prevRideRequestIds = useRef<Set<string>>(new Set());
 
@@ -31,7 +31,7 @@ const DriverDashboard: React.FC = () => {
         prevRideRequestIds.current = currentRideRequestIds;
     }, [rideRequests, showNotification]);
 
-    if (!driver) {
+    if (!driver || !authUser) {
         return <div className="d-flex justify-content-center align-items-center vh-100"><p className="text-white">Loading Driver Dashboard...</p></div>;
     }
 
@@ -139,7 +139,7 @@ const DriverDashboard: React.FC = () => {
                          <div className="app-card">
                              <div className="section-title mb-3">Student Activity Hotspots</div>
                              <p className="small text-muted mb-3" style={{marginTop: '-0.5rem'}}>Busiest times based on completed rides.</p>
-                             <StudentHeatmap rides={allRides} />
+                             <StudentHeatmap rides={allRides} driverId={authUser.uid} />
                          </div>
                      </div>
                 </div>
