@@ -1,3 +1,4 @@
+
 // FIX: Cast style object to React.CSSProperties to allow for custom properties.
 import React, { useEffect, useRef } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
@@ -37,19 +38,19 @@ const DriverDashboard: React.FC = () => {
     return (
         <div className="row gy-4">
             <div className="col-12">
-                <div className="welcome-card">
+                <div className="app-card">
                      <div className="row align-items-center">
-                        <div className="col-md-7">
+                        <div className="col-md-7 text-center text-md-start mb-3 mb-md-0">
                             <div className="welcome-text">
-                                <h2 style={{ color: 'aliceblue' }}>
+                                <h2>
                                     Welcome, {driver.name}!
                                     {driver.isVerified && <span className="badge bg-success ms-2"><i className="fas fa-check-circle me-1"></i>Verified</span>}
                                 </h2>
-                                <p style={{ color: 'antiquewhite' }}>{driver.isOnline ? "You are online and ready for rides." : "You are offline."}</p>
+                                <p className="mb-0">{driver.isOnline ? "You are online and ready for rides." : "You are offline."}</p>
                             </div>
                         </div>
-                        <div className="col-md-5 text-md-end">
-                            <label htmlFor="online-toggle" className="d-flex align-items-center justify-content-end" style={{ cursor: 'pointer' }}>
+                        <div className="col-md-5 text-center text-md-end">
+                            <label htmlFor="online-toggle" className="d-flex align-items-center justify-content-center justify-content-md-end" style={{ cursor: 'pointer' }}>
                                 <div className="form-check form-switch me-3">
                                    <input 
                                      className="form-check-input" 
@@ -69,15 +70,15 @@ const DriverDashboard: React.FC = () => {
             </div>
             <div className="col-12">
                 <div className="row g-4">
-                    <div className="col-lg-8">
+                    <div className="col-12">
                         <div className="row g-4">
-                            <div className="col-6 col-md-4"><div className="stats-card"><div className="stats-icon"><i className="fas fa-road"></i></div><div className="stats-number">{driver.totalRides}</div><div className="stats-label">Today's Rides</div></div></div>
-                            <div className="col-6 col-md-4"><div className="stats-card"><div className="stats-icon"><i className="fas fa-wallet"></i></div><div className="stats-number">₹{driver.earnings.toFixed(2)}</div><div className="stats-label">Today's Earnings</div></div></div>
-                            <div className="col-12 col-md-4"><div className="stats-card"><div className="stats-icon"><i className="fas fa-star"></i></div><div className="stats-number">{driver.rating}</div><div className="stats-label">Avg Rating</div></div></div>
+                            <div className="col-6 col-md-3"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-road"></i></div><div className="stats-number">{driver.totalRides}</div><div className="stats-label">Today's Rides</div></div></div>
+                            <div className="col-6 col-md-3"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-wallet"></i></div><div className="stats-number">₹{driver.earnings.toFixed(2)}</div><div className="stats-label">Today's Earnings</div></div></div>
+                            <div className="col-6 col-md-3"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-star"></i></div><div className="stats-number">{driver.rating}</div><div className="stats-label">Avg Rating</div></div></div>
+                            <div className="col-6 col-md-3">
+                                <EcoAnalytics co2Savings={driver.totalCo2Savings || 0} />
+                            </div>
                         </div>
-                    </div>
-                    <div className="col-lg-4">
-                        <EcoAnalytics co2Savings={driver.totalCo2Savings || 0} />
                     </div>
                 </div>
             </div>
@@ -86,7 +87,7 @@ const DriverDashboard: React.FC = () => {
                 <div className="row g-4">
                     <div className="col-lg-5">
                          {activeRide ? (
-                             <div className="active-ride">
+                             <div className="app-card">
                                 <div className="section-title mb-3">Current Ride</div>
                                 <h5>{activeRide.pickup}</h5>
                                 <p className="small">to</p>
@@ -98,9 +99,9 @@ const DriverDashboard: React.FC = () => {
                                 <button onClick={completeRide} className="btn-book">Complete Ride</button>
                             </div>
                         ) : (
-                             <div className="booking-widget">
+                             <div className="app-card">
                                  {waitlist.length > 0 && (
-                                    <div className="p-3 mb-4 rounded text-center" style={{background: 'rgba(203, 161, 53, 0.1)', border: '1px solid var(--accent)'}}>
+                                    <div className="p-3 mb-4 rounded text-center accent-card">
                                         <h5 className="mb-1" style={{color: 'var(--accent)'}}><i className="fas fa-users me-2"></i>High Demand!</h5>
                                         <p className="mb-0"><strong>{waitlist.length} student{waitlist.length > 1 ? 's are' : ' is'}</strong> on the waitlist for a shared ride. Go online to be matched!</p>
                                     </div>
@@ -135,7 +136,7 @@ const DriverDashboard: React.FC = () => {
                         )}
                     </div>
                      <div className="col-lg-7">
-                         <div className="recent-rides">
+                         <div className="app-card">
                              <div className="section-title mb-3">Student Activity Hotspots</div>
                              <p className="small text-muted mb-3" style={{marginTop: '-0.5rem'}}>Busiest times based on completed rides.</p>
                              <StudentHeatmap rides={allRides} />

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -170,7 +171,7 @@ const DriverOnboarding: React.FC = () => {
 
     return (
         <div className="d-flex flex-column justify-content-center align-items-center vh-100 p-3">
-            <div className="booking-widget w-100" style={{ maxWidth: '450px' }}>
+            <div className="app-card w-100" style={{ maxWidth: '450px' }}>
                 <div className="mb-4 text-center">
                     <h3 className="booking-title mb-1">Driver Setup</h3>
                     <p className="text-muted">Step {step} of {totalSteps}: {stepTitles[step - 1]}</p>

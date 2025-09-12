@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { ScheduledEvent, RidePlan } from "../types";
 

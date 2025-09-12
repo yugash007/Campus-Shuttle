@@ -1,3 +1,4 @@
+
 import { Ride, RideType, FareBreakdownDetails } from '../types';
 
 // Mock historical data for popular routes (distance in km, time in minutes)

@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
+import ThemeToggle from './ThemeToggle';
 
 const Header: React.FC = () => {
     const { authUser, student, driver, logout, setView } = useFirebase();
@@ -42,11 +44,12 @@ const Header: React.FC = () => {
             <div className="user-menu">
                 <button 
                     onClick={logout} 
-                    className="btn-action"
-                    style={{padding: '0.25rem 0.75rem', marginTop: '0'}}
+                    className="btn-action btn-logout"
+                    style={{marginTop: '0'}}
                 >
                     Logout
                 </button>
+                <ThemeToggle />
                 <button
                     type="button"
                     className="user-avatar"

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { ScheduledEvent, RidePlan } from '../types';
@@ -82,7 +83,7 @@ const SchedulerScreen: React.FC = () => {
             </div>
 
             <div className="col-lg-6">
-                <div className="booking-widget">
+                <div className="app-card">
                     <div className="d-flex justify-content-between align-items-center mb-3">
                          <h3 className="booking-title mb-0">My Weekly Schedule</h3>
                          <button className="btn-action" onClick={() => setShowEventForm(!showEventForm)}>
@@ -127,7 +128,7 @@ const SchedulerScreen: React.FC = () => {
             </div>
 
             <div className="col-lg-6">
-                <div className="booking-widget">
+                <div className="app-card">
                     <h3 className="booking-title mb-3">
                         <i className="fas fa-brain me-2" style={{color: 'var(--accent)'}}></i>
                         AI Suggestions & Plans

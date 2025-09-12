@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { Student, Driver } from '../types';
@@ -115,9 +116,9 @@ const ProfileScreen: React.FC = () => {
 
     const renderDetailItem = (icon: string, label: string, value: string | number | undefined) => (
         <div className="d-flex align-items-center mb-3">
-            <i className={`fas ${icon} fa-fw me-3 text-white-50`} style={{width: '20px'}}></i>
+            <i className={`fas ${icon} fa-fw me-3 text-muted`} style={{width: '20px'}}></i>
             <div>
-                <div className="small text-white-50">{label}</div>
+                <div className="small text-muted">{label}</div>
                 <div className="fw-bold">{value || 'Not set'}</div>
             </div>
         </div>
@@ -128,7 +129,7 @@ const ProfileScreen: React.FC = () => {
             <button onClick={() => setView('dashboard')} className="btn-action mb-4">
                 <i className="fas fa-arrow-left me-2"></i>Back to Dashboard
             </button>
-            <div className="booking-widget">
+            <div className="app-card profile-card">
                 <div className="d-flex justify-content-between align-items-center mb-4">
                     <h3 className="booking-title mb-0">Profile & Settings</h3>
                     {!isEditing && (
@@ -203,7 +204,7 @@ const ProfileScreen: React.FC = () => {
                 {student && (
                     <>
                         <h5 className="section-title my-3" style={{borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem'}}>Emergency Contact</h5>
-                        <p className="small text-white-50" style={{marginTop: '-0.75rem', marginBottom: '1rem'}}>
+                        <p className="small text-muted" style={{marginTop: '-0.75rem', marginBottom: '1rem'}}>
                             This contact will be alerted if you use the SOS feature during a ride.
                         </p>
                         <div className="row">

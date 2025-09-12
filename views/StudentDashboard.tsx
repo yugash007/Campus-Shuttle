@@ -1,3 +1,4 @@
+
 declare namespace google {
     namespace maps {
         interface LatLngLiteral {
@@ -95,13 +96,14 @@ const StudentDashboard: React.FC = () => {
                 setUserLocation({ lat: latitude, lng: longitude });
             },
             (error) => {
-                console.error("Error getting user location:", error);
+                console.error("Error getting user location:", error.message);
+                showNotification('Location Error', 'Could not access your location. Using a default starting point.');
                 setUserLocation({ lat: 13.6288, lng: 79.4192 }); 
             },
             { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
         return () => navigator.geolocation.clearWatch(watchId);
-    }, []);
+    }, [showNotification]);
 
     // Check for completed rides to show rating modal
     useEffect(() => {
@@ -227,7 +229,7 @@ const StudentDashboard: React.FC = () => {
         <>
             <div className="row gy-4">
                 <div className="col-12">
-                    <div className="welcome-card">
+                    <div className="app-card">
                         <div className="welcome-text">
                             <h2>Welcome, {student.name}!</h2>
                             <p>Ready to book your next ride?</p>
@@ -237,16 +239,16 @@ const StudentDashboard: React.FC = () => {
 
                 <div className="col-12">
                     <div className="row g-4">
-                        <div className="col-lg-8">
+                        <div className="col-lg-12">
                             <div className="row g-4">
-                                <div className="col-6 col-md-3"><div className="stats-card"><div className="stats-icon"><i className="fas fa-road"></i></div><div className="stats-number">{student.totalRides}</div><div className="stats-label">Total Rides</div></div></div>
-                                <div className="col-6 col-md-3"><div className="stats-card"><div className="stats-icon"><i className="fas fa-users"></i></div><div className="stats-number">{student.sharedRides}</div><div className="stats-label">Shared Rides</div></div></div>
-                                <div className="col-6 col-md-3"><div className="stats-card"><div className="stats-icon"><i className="fas fa-wallet"></i></div><div className="stats-number">₹{student.savings.toFixed(2)}</div><div className="stats-label">Money Saved</div></div></div>
-                                <div className="col-6 col-md-3"><div className="stats-card"><div className="stats-icon"><i className="fas fa-star"></i></div><div className="stats-number">{student.rating.toFixed(1)}</div><div className="stats-label">Avg Rating</div></div></div>
+                                <div className="col-6 col-md-4 col-lg-2"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-road"></i></div><div className="stats-number">{student.totalRides}</div><div className="stats-label">Total Rides</div></div></div>
+                                <div className="col-6 col-md-4 col-lg-2"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-users"></i></div><div className="stats-number">{student.sharedRides}</div><div className="stats-label">Shared Rides</div></div></div>
+                                <div className="col-6 col-md-4 col-lg-2"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-wallet"></i></div><div className="stats-number">₹{student.savings.toFixed(2)}</div><div className="stats-label">Money Saved</div></div></div>
+                                <div className="col-6 col-md-4 col-lg-2"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-star"></i></div><div className="stats-number">{student.rating.toFixed(1)}</div><div className="stats-label">Avg Rating</div></div></div>
+                                <div className="col-12 col-md-4 col-lg-4">
+                                     <EcoAnalytics co2Savings={student.totalCo2Savings || 0} />
+                                </div>
                             </div>
-                        </div>
-                        <div className="col-lg-4">
-                             <EcoAnalytics co2Savings={student.totalCo2Savings || 0} />
                         </div>
                     </div>
                 </div>
@@ -255,7 +257,7 @@ const StudentDashboard: React.FC = () => {
                      <div className="row g-4">
                         <div className="col-lg-5">
                             {activeRide ? (
-                                <div className="active-ride d-flex flex-column">
+                                <div className="app-card">
                                     {/* --- TOP PART --- */}
                                     <div>
                                         <div className="section-header">
@@ -317,7 +319,7 @@ const StudentDashboard: React.FC = () => {
                                     </div>
                                 </div>
                             ) : student.isOnWaitlist ? (
-                                <div key="waitlist-widget" className="booking-widget text-center">
+                                <div key="waitlist-widget" className="app-card text-center">
                                     <i className="fas fa-clock fa-3x mb-3" style={{color: 'var(--accent)'}}></i>
                                     <h4 className="booking-title mb-2">You are on the Waitlist!</h4>
                                     <p className="text-muted">We are finding a shared ride for you.</p>
@@ -328,7 +330,7 @@ const StudentDashboard: React.FC = () => {
                                     <button onClick={leaveWaitlist} className="btn-book">Leave Waitlist</button>
                                 </div>
                             ) : (
-                                <div key="booking-widget" className="booking-widget">
+                                <div key="booking-widget" className="app-card booking-widget">
                                     <h3 className="booking-title mb-4">Book a Ride</h3>
                                     
                                     <div className="ride-option mb-3" role="group" aria-label="Select ride type">
@@ -394,7 +396,7 @@ const StudentDashboard: React.FC = () => {
                         </div>
                         <div className="col-lg-7">
                             <div className="d-flex flex-column gap-4">
-                                <div className="recent-rides">
+                                <div className="app-card">
                                     <div className="section-header">
                                         <h3 className="section-title">Ride History</h3>
                                     </div>
@@ -411,7 +413,7 @@ const StudentDashboard: React.FC = () => {
                                     )) : <p>No completed rides yet.</p>}
                                 </div>
 
-                                <div className="booking-widget p-4" style={{background: 'rgba(203, 161, 53, 0.1)', border: '1px solid var(--accent)'}}>
+                                <div className="app-card accent-card">
                                     <div className="d-flex align-items-center">
                                         <div className="stats-icon me-3 flex-shrink-0" style={{background: 'rgba(203, 161, 53, 0.2)', color: 'var(--accent)', width: '60px', height: '60px'}}>
                                             <i className="fas fa-brain fa-2x"></i>

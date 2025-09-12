@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FareBreakdownDetails } from '../types';
 
@@ -24,23 +25,23 @@ const FareBreakdownModal: React.FC<FareBreakdownModalProps> = ({ show, onClose, 
           </div>
           <div className="modal-body">
             <ul className="list-group list-group-flush">
-              <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent text-white border-secondary">
+              <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent">
                 Base Fare
                 <span>₹{details.baseFare.toFixed(2)}</span>
               </li>
-              <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent text-white border-secondary">
+              <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent">
                 Est. Distance Charge
                 <span>₹{details.distanceCharge.toFixed(2)}</span>
               </li>
-              <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent text-white border-secondary">
+              <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent">
                 Est. Time Charge
                 <span>₹{details.timeCharge.toFixed(2)}</span>
               </li>
               {details.surgeCharge > 0 && (
-                <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent text-warning border-secondary">
+                <li className="list-group-item d-flex justify-content-between align-items-center bg-transparent text-warning">
                   <div>
                     Surge Surcharge 
-                    {isCapped && <span className="small text-white-50 ms-1">(Capped)</span>}
+                    {isCapped && <span className="small text-muted ms-1">(Capped)</span>}
                     <small className="d-block opacity-75">{details.surgeMultiplier}x Peak Time</small>
                   </div>
                   <span>+ ₹{details.surgeCharge.toFixed(2)}</span>

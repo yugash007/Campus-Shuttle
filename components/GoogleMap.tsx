@@ -1,3 +1,4 @@
+
 // FIX: The 'google' namespace was not found. Added ambient type declarations for Google Maps.
 declare namespace google {
     namespace maps {

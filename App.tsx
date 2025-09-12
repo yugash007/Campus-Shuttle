@@ -1,3 +1,4 @@
+
 import React from 'react';
 import StudentDashboard from './views/StudentDashboard';
 import DriverDashboard from './views/DriverDashboard';
@@ -12,6 +13,7 @@ import ProfileScreen from './views/ProfileScreen';
 import OfflineIndicator from './components/OfflineIndicator';
 import PaymentScreen from './views/PaymentScreen';
 import SchedulerScreen from './views/SchedulerScreen';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 const AppContent: React.FC = () => {
   const { authUser, student, driver, loading, view } = useFirebase();
@@ -71,15 +73,17 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <NotificationProvider>
-      <FirebaseProvider>
-        <TyndallEffect streakColor="rgba(255, 255, 255, 0.4)">
-          <OfflineIndicator />
-          <AppContent />
-          <NotificationToast />
-        </TyndallEffect>
-      </FirebaseProvider>
-    </NotificationProvider>
+    <ThemeProvider>
+      <NotificationProvider>
+        <FirebaseProvider>
+          <TyndallEffect streakColor="rgba(255, 255, 255, 0.4)">
+            <OfflineIndicator />
+            <AppContent />
+            <NotificationToast />
+          </TyndallEffect>
+        </FirebaseProvider>
+      </NotificationProvider>
+    </ThemeProvider>
   );
 };
 

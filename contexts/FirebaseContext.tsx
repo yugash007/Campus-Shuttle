@@ -1,6 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import firebase from 'firebase/compat/app';
 import { auth, database, storage } from '../firebase';
-import { ref, onValue, set, get, update, remove, push, serverTimestamp, query, orderByChild } from 'firebase/database';
+import { ref, onValue, set, get, update, remove, push, query, orderByChild } from 'firebase/database';
 import { User, Student, Driver, Ride, RideStatus, UserRole, Transaction, ScheduledEvent, RidePlan } from '../types';
 import { calculateDriverBonus } from '../ai/EcoNudgeEngine';
 import { useNotification } from './NotificationContext';
@@ -326,7 +328,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         
         const waitlistEntry = {
             rideDetails: details,
-            timestamp: serverTimestamp()
+            timestamp: firebase.database.ServerValue.TIMESTAMP
         };
         
         const updates: { [key: string]: any } = {};

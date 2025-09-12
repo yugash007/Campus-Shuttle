@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { auth, database } from '../firebase';
 import { ref, set } from 'firebase/database';
@@ -99,7 +100,7 @@ export const AuthScreen: React.FC = () => {
                 <h1 className="text-white mt-2" style={{ fontSize: '2.5rem' }}>Campus Shuttle</h1>
                 <p className="text-white-50">Your ride, your way.</p>
             </div>
-            <div className="booking-widget w-100" style={{ maxWidth: '400px' }}>
+            <div className="app-card w-100" style={{ maxWidth: '400px' }}>
                 <h3 className="booking-title mb-4">{isLoginView ? 'Login' : 'Create Account'}</h3>
                 
                 {isLoginView ? (
@@ -171,7 +172,7 @@ export const AuthScreen: React.FC = () => {
                     </a>
                 </p>
             </div>
-             <div className="mt-4 p-3 rounded text-center w-100" style={{ maxWidth: '400px', background: 'rgba(0,0,0,0.2)' }}>
+             <div className="mt-4 p-3 rounded text-center w-100 demo-accounts" style={{ maxWidth: '400px' }}>
                 <h4 className="text-white fw-bold">Demo Accounts</h4>
                 <p className="mb-0"><strong>Student:</strong> student@test.com</p>
                 <p className="mb-0"><strong>Driver:</strong> driver@test.com</p>

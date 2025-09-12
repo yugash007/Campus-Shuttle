@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -35,7 +36,7 @@ const Wallet: React.FC = () => {
     };
 
     return (
-        <div className="booking-widget">
+        <div className="app-card">
             <div className="text-center mb-4">
                 <span className="text-muted">Current Balance</span>
                 <div className="fare-amount" style={{ fontSize: '2.5rem' }}>₹{student.walletBalance.toFixed(2)}</div>

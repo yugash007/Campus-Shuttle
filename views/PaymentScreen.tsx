@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import Wallet from '../components/Wallet';
@@ -37,7 +38,7 @@ const PaymentScreen: React.FC = () => {
                 <Wallet />
             </div>
             <div className="col-lg-7">
-                <div className="recent-rides">
+                <div className="app-card">
                     <div className="section-header">
                         <h3 className="section-title">Transaction History</h3>
                     </div>
