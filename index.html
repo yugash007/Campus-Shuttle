@@ -302,6 +302,16 @@
             color: var(--destination-chip-hover-color);
             transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
+        .destination-chip.active, .destination-chip[aria-pressed="true"] {
+            background: var(--accent);
+            color: var(--dark) !important;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        body.light-theme .destination-chip.active, 
+        body.light-theme .destination-chip[aria-pressed="true"] {
+            color: #fff !important;
+        }
 
         .ride-option {
             display: flex; border: 1px solid var(--ride-option-border-color);

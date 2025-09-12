@@ -99,7 +99,15 @@ const SchedulerScreen: React.FC = () => {
                             <input type="time" className="form-control mb-2" value={eventTime} onChange={e => setEventTime(e.target.value)} />
                             <div className="destination-chips mb-2">
                                 {daysOfWeek.map(day => (
-                                    <button key={day} onClick={() => handleDayToggle(day)} className={`destination-chip ${eventDays.includes(day) ? 'active' : ''}`} style={{background: eventDays.includes(day) ? 'var(--accent)' : ''}}>{day}</button>
+                                    <button 
+                                      key={day} 
+                                      type="button"
+                                      onClick={() => handleDayToggle(day)} 
+                                      className={`destination-chip ${eventDays.includes(day) ? 'active' : ''}`}
+                                      aria-pressed={eventDays.includes(day)}
+                                    >
+                                      {day}
+                                    </button>
                                 ))}
                             </div>
                             <button className="btn-outline-primary w-100" onClick={handleAddEvent}>Add to Schedule</button>
