@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { auth, database } from '../firebase';
-import { ref, set } from 'firebase/database';
+// FIX: The modular imports 'ref' and 'set' are not available in the compat library.
+// They have been removed, and the database calls below are updated to compat syntax.
 import { UserRole } from '../types';
 
 export const AuthScreen: React.FC = () => {
@@ -35,7 +35,8 @@ export const AuthScreen: React.FC = () => {
             const user = userCredential.user;
             if (user) {
                 if (role === UserRole.STUDENT) {
-                    await set(ref(database, `students/${user.uid}`), {
+                    // FIX: Updated to use Firebase v8 compat syntax.
+                    await database.ref(`students/${user.uid}`).set({
                         name,
                         role: UserRole.STUDENT,
                         walletBalance: 0,
@@ -56,7 +57,8 @@ export const AuthScreen: React.FC = () => {
                         ridePlans: {},
                     });
                 } else {
-                    await set(ref(database, `drivers/${user.uid}`), {
+                    // FIX: Updated to use Firebase v8 compat syntax.
+                    await database.ref(`drivers/${user.uid}`).set({
                         name,
                         role: UserRole.DRIVER,
                         isOnline: false,

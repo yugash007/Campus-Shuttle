@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import firebase from 'firebase/compat/app';
 import { auth, database, storage } from '../firebase';
-import { ref, onValue, set, get, update, remove, push, query, orderByChild } from 'firebase/database';
+// FIX: The modular imports are not available in the compat library.
+// All database calls have been updated to use the v8 compat syntax (e.g., database.ref()).
 import { User, Student, Driver, Ride, RideStatus, UserRole, Transaction, ScheduledEvent, RidePlan, RideType } from '../types';
 import { calculateDriverBonus } from '../ai/EcoNudgeEngine';
 import { useNotification } from './NotificationContext';
@@ -70,8 +71,8 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     const { showNotification } = useNotification();
 
      const _executeBookRide = async (details: Omit<Ride, 'id' | 'studentId' | 'date' | 'status'>, studentId: string) => {
-        const rideRequestRef = ref(database, 'ride-requests');
-        const newRequestNode = push(rideRequestRef);
+        const rideRequestRef = database.ref('ride-requests');
+        const newRequestNode = rideRequestRef.push();
         const newRideId = newRequestNode.key!;
         
         const newRide: Ride = {
@@ -87,7 +88,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/rides/${newRideId}`] = newRide;
         updates[`/students/${studentId}/activeRideId`] = newRideId;
 
-        await update(ref(database), updates);
+        await database.ref().update(updates);
     };
 
     const processBookingQueue = useCallback(async () => {
@@ -134,7 +135,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
             if (firebaseUser) {
                 // Check if user is a student
-                let snapshot = await get(ref(database, `students/${firebaseUser.uid}`));
+                let snapshot = await database.ref(`students/${firebaseUser.uid}`).get();
                 if (snapshot.exists()) {
                     const studentData = snapshot.val() as Student;
                     setAuthUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: UserRole.STUDENT });
@@ -142,7 +143,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                     setDriver(null); // Clear driver data
                 } else {
                     // Check if user is a driver
-                    snapshot = await get(ref(database, `drivers/${firebaseUser.uid}`));
+                    snapshot = await database.ref(`drivers/${firebaseUser.uid}`).get();
                     if(snapshot.exists()) {
                         const driverData = snapshot.val() as Driver;
                         setAuthUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: UserRole.DRIVER });
@@ -168,7 +169,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     const fetchLinkedData = useCallback(async (path: string, ids: { [key: string]: boolean } | undefined) => {
         if (!ids) return [];
         const dataIds = Object.keys(ids);
-        const dataPromises = dataIds.map(id => get(ref(database, `${path}/${id}`)));
+        const dataPromises = dataIds.map(id => database.ref(`${path}/${id}`).get());
         const snapshots = await Promise.all(dataPromises);
         return snapshots.map(snap => snap.val()).filter(Boolean);
     }, []);
@@ -177,8 +178,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     useEffect(() => {
         if (!authUser) return;
 
-        let unsubscribeUser: () => void;
-        let unsubscribeAllRides: (() => void) | null = null;
+        const unsubscribes: (() => void)[] = [];
         
         if (authUser.role === UserRole.STUDENT) {
             // Load initial ride history from cache
@@ -187,8 +187,8 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                 setRecentRides(JSON.parse(cachedHistoryRaw));
             }
 
-            const studentRef = ref(database, `students/${authUser.uid}`);
-            unsubscribeUser = onValue(studentRef, async (snapshot) => {
+            const studentRef = database.ref(`students/${authUser.uid}`);
+            const studentCallback = async (snapshot: firebase.database.DataSnapshot) => {
                 const studentData = snapshot.val();
                 setStudent(studentData);
     
@@ -201,11 +201,13 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                 setTransactionHistory(transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
                 setWeeklySchedule(schedule);
                 setRidePlans(plans);
-            });
+            };
+            studentRef.on('value', studentCallback);
+            unsubscribes.push(() => studentRef.off('value', studentCallback));
 
 
-            const ridesRef = ref(database, 'rides');
-            unsubscribeAllRides = onValue(ridesRef, (snapshot) => {
+            const ridesRef = database.ref('rides');
+            const ridesCallback = (snapshot: firebase.database.DataSnapshot) => {
                 const ridesData = snapshot.val() || {};
                 const ridesList: Ride[] = Object.values(ridesData);
                 const history = ridesList
@@ -217,22 +219,29 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                 setRecentRides(history);
                 // Cache the fresh data
                 localStorage.setItem(`rideHistoryCache_${authUser.uid}`, JSON.stringify(history));
-            });
+            };
+            ridesRef.on('value', ridesCallback);
+            unsubscribes.push(() => ridesRef.off('value', ridesCallback));
+
         } else if (authUser.role === UserRole.DRIVER) {
-            const driverRef = ref(database, `drivers/${authUser.uid}`);
-            unsubscribeUser = onValue(driverRef, snapshot => setDriver(snapshot.val()));
+            const driverRef = database.ref(`drivers/${authUser.uid}`);
+            const driverCallback = (snapshot: firebase.database.DataSnapshot) => setDriver(snapshot.val());
+            driverRef.on('value', driverCallback);
+            unsubscribes.push(() => driverRef.off('value', driverCallback));
 
             // Add listener for all rides for the driver's heatmap
-            const allRidesRef = ref(database, 'rides');
-            unsubscribeAllRides = onValue(allRidesRef, (snapshot) => {
+            const allRidesRef = database.ref('rides');
+            const allRidesCallback = (snapshot: firebase.database.DataSnapshot) => {
                 const ridesData = snapshot.val() || {};
                 const ridesList = Object.values(ridesData) as Ride[];
                 setAllRides(ridesList.filter(ride => ride.status === RideStatus.COMPLETED));
-            });
+            };
+            allRidesRef.on('value', allRidesCallback);
+            unsubscribes.push(() => allRidesRef.off('value', allRidesCallback));
         }
         
-        const requestsRef = ref(database, 'ride-requests');
-        const unsubscribeRequests = onValue(requestsRef, snapshot => {
+        const requestsRef = database.ref('ride-requests');
+        const requestsCallback = (snapshot: firebase.database.DataSnapshot) => {
             const requestsData = snapshot.val() || {};
             const requestsList = Object.values(requestsData) as Ride[];
             
@@ -250,60 +259,75 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
             });
             
             setRideRequests(filteredRequests);
-        });
+        };
+        requestsRef.on('value', requestsCallback);
+        unsubscribes.push(() => requestsRef.off('value', requestsCallback));
 
-        const waitlistRef = query(ref(database, 'waitlist'), orderByChild('timestamp'));
-        const unsubscribeWaitlist = onValue(waitlistRef, (snapshot) => {
+
+        const waitlistRef = database.ref('waitlist').orderByChild('timestamp');
+        const waitlistCallback = (snapshot: firebase.database.DataSnapshot) => {
             const waitlistData = snapshot.val() || {};
             const waitlistArray = Object.keys(waitlistData).map(key => ({
                 studentId: key,
                 ...waitlistData[key]
             }));
             setWaitlist(waitlistArray);
-        });
+        };
+        waitlistRef.on('value', waitlistCallback);
+        unsubscribes.push(() => waitlistRef.off('value', waitlistCallback));
 
         return () => {
-            if (unsubscribeUser) unsubscribeUser();
-            unsubscribeRequests();
-            unsubscribeWaitlist();
-            if (unsubscribeAllRides) unsubscribeAllRides();
+            unsubscribes.forEach(unsub => unsub());
         };
     }, [authUser, fetchLinkedData]);
 
     // Effect for tracking active ride
     useEffect(() => {
-        let unsubscribeRide: () => void;
-        let unsubscribeDriverForRide: () => void;
-        
         const rideId = student?.activeRideId || driver?.currentRideId;
-
-        if (rideId) {
-            const rideRef = ref(database, `rides/${rideId}`);
-            unsubscribeRide = onValue(rideRef, snapshot => {
-                const rideData = snapshot.val() as Ride;
-                if(rideData && (rideData.status === RideStatus.ACTIVE || rideData.status === RideStatus.PENDING || rideData.status === RideStatus.CONFIRMED)){
-                    setActiveRide(rideData);
-                    if (rideData.driverId) {
-                        const driverForRideRef = ref(database, `drivers/${rideData.driverId}`);
-                        unsubscribeDriverForRide = onValue(driverForRideRef, driverSnapshot => {
-                            setDriverForRide(driverSnapshot.val());
-                        });
-                    } else {
-                        setDriverForRide(null);
-                    }
-                } else {
-                     setActiveRide(null);
-                     setDriverForRide(null);
-                }
-            });
-        } else {
+        
+        if (!rideId) {
             setActiveRide(null);
             setDriverForRide(null);
+            return;
         }
+
+        let unsubscribeDriverForRide: (() => void) | null = null;
         
+        const rideRef = database.ref(`rides/${rideId}`);
+        const rideCallback = (snapshot: firebase.database.DataSnapshot) => {
+            const rideData = snapshot.val() as Ride;
+            if (rideData && (rideData.status === RideStatus.ACTIVE || rideData.status === RideStatus.PENDING || rideData.status === RideStatus.CONFIRMED)) {
+                setActiveRide(rideData);
+
+                // Clean up previous driver listener to prevent leaks
+                if (unsubscribeDriverForRide) {
+                    unsubscribeDriverForRide();
+                    unsubscribeDriverForRide = null;
+                }
+
+                if (rideData.driverId) {
+                    const driverForRideRef = database.ref(`drivers/${rideData.driverId}`);
+                    const driverCallback = (driverSnapshot: firebase.database.DataSnapshot) => {
+                        setDriverForRide(driverSnapshot.val());
+                    };
+                    driverForRideRef.on('value', driverCallback);
+                    unsubscribeDriverForRide = () => driverForRideRef.off('value', driverCallback);
+                } else {
+                    setDriverForRide(null);
+                }
+            } else {
+                setActiveRide(null);
+                setDriverForRide(null);
+            }
+        };
+
+        rideRef.on('value', rideCallback);
+
         return () => {
-            if (unsubscribeRide) unsubscribeRide();
-            if (unsubscribeDriverForRide) unsubscribeDriverForRide();
+            rideRef.off('value', rideCallback);
+            if (unsubscribeDriverForRide) {
+                unsubscribeDriverForRide();
+            }
         };
     }, [student?.activeRideId, driver?.currentRideId]);
 
@@ -320,7 +344,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
 
         await _executeBookRide(details, authUser.uid);
-    }, [authUser, isOnline, showNotification]);
+    }, [authUser, isOnline, showNotification, _executeBookRide]);
     
     const joinWaitlist = useCallback(async (details: Omit<Ride, 'id' | 'studentId' | 'date' | 'status'>) => {
         if (!authUser || authUser.role !== UserRole.STUDENT) return;
@@ -334,7 +358,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/waitlist/${authUser.uid}`] = waitlistEntry;
         updates[`/students/${authUser.uid}/isOnWaitlist`] = true;
         
-        await update(ref(database), updates);
+        await database.ref().update(updates);
         showNotification('Added to Waitlist', 'We will find a driver for you shortly!');
     }, [authUser, showNotification]);
 
@@ -345,7 +369,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/waitlist/${authUser.uid}`] = null;
         updates[`/students/${authUser.uid}/isOnWaitlist`] = false;
         
-        await update(ref(database), updates);
+        await database.ref().update(updates);
         showNotification('Removed from Waitlist', 'You have left the waitlist.');
     }, [authUser, showNotification]);
 
@@ -354,7 +378,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
             throw new Error("User not authenticated or not a student.");
         }
 
-        const newTransactionRef = push(ref(database, 'transactions'));
+        const newTransactionRef = database.ref('transactions').push();
         const transactionId = newTransactionRef.key;
 
         if (!transactionId) {
@@ -374,7 +398,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/students/${authUser.uid}/walletBalance`] = student.walletBalance + amount;
         updates[`/students/${authUser.uid}/transactionHistory/${transactionId}`] = true;
 
-        await update(ref(database), updates);
+        await database.ref().update(updates);
     };
     
     const updateWeeklySchedule = async (events: ScheduledEvent[]) => {
@@ -385,8 +409,8 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     
         for (const event of events) {
             let eventId = event.id;
-            if (!eventId) {
-                eventId = push(ref(database, 'scheduled-events')).key!;
+            if (!eventId || !eventId.startsWith('event-')) {
+                eventId = database.ref('scheduled-events').push().key!;
             }
             updates[`/scheduled-events/${eventId}`] = { ...event, id: eventId };
             newScheduleLinks[eventId] = true;
@@ -395,13 +419,13 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         // To remove deleted events, we overwrite the links
         updates[`/students/${authUser.uid}/weeklySchedule`] = newScheduleLinks;
     
-        await update(ref(database), updates);
+        await database.ref().update(updates);
         showNotification('Schedule Saved', 'Your weekly schedule has been updated.');
     };
     
     const acceptRidePlan = async (plan: Omit<RidePlan, 'id'>) => {
         if (!authUser || authUser.role !== UserRole.STUDENT) return;
-        const newPlanRef = push(ref(database, 'ride-plans'));
+        const newPlanRef = database.ref('ride-plans').push();
         const planId = newPlanRef.key!;
         
         const newPlan: RidePlan = { ...plan, id: planId };
@@ -410,7 +434,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/ride-plans/${planId}`] = newPlan;
         updates[`/students/${authUser.uid}/ridePlans/${planId}`] = true;
         
-        await update(ref(database), updates);
+        await database.ref().update(updates);
         showNotification('Plan Saved', `Recurring ride for ${plan.forEvent} has been saved.`);
     };
 
@@ -421,7 +445,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/ride-plans/${planId}`] = null;
         updates[`/students/${authUser.uid}/ridePlans/${planId}`] = null;
         
-        await update(ref(database), updates);
+        await database.ref().update(updates);
         showNotification('Plan Removed', 'The recurring ride plan has been deleted.');
     };
 
@@ -435,19 +459,19 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         if(activeRide?.driverId) {
              updates[`/drivers/${activeRide.driverId}/currentRideId`] = null;
         }
-        remove(ref(database, `ride-requests/${rideId}`));
-        update(ref(database), updates);
+        database.ref(`ride-requests/${rideId}`).remove();
+        database.ref().update(updates);
     };
     
     const toggleDriverStatus = async () => {
         if (!driver || !authUser || authUser.role !== UserRole.DRIVER) return;
         const newStatus = !driver.isOnline;
-        await update(ref(database, `drivers/${authUser.uid}`), { isOnline: newStatus });
+        await database.ref(`drivers/${authUser.uid}`).update({ isOnline: newStatus });
 
         // If driver is coming online and has no active ride, check the waitlist.
         if (newStatus && !driver.currentRideId) {
-            const waitlistQuery = query(ref(database, 'waitlist'), orderByChild('timestamp'));
-            const snapshot = await get(waitlistQuery);
+            const waitlistQuery = database.ref('waitlist').orderByChild('timestamp');
+            const snapshot = await waitlistQuery.get();
             if (snapshot.exists()) {
                 const waitlistData = snapshot.val();
                 const firstWaitlistKey = Object.keys(waitlistData)[0];
@@ -457,7 +481,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
 
                 // Create a ride for the matched student and driver
                 const { studentId, rideDetails } = firstWaitlistEntry;
-                const newRideId = push(ref(database, 'rides')).key!;
+                const newRideId = database.ref('rides').push().key!;
                 
                 const newRide: Ride = {
                     ...rideDetails,
@@ -475,7 +499,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                 updates[`/students/${studentId}/activeRideId`] = newRideId;
                 updates[`/drivers/${authUser.uid}/currentRideId`] = newRideId;
 
-                await update(ref(database), updates);
+                await database.ref().update(updates);
             }
         }
     };
@@ -483,17 +507,17 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     const handleRideRequest = (rideId: string, accepted: boolean) => {
         if (!authUser || authUser.role !== UserRole.DRIVER || driver?.currentRideId) return;
 
-        remove(ref(database, `ride-requests/${rideId}`));
+        database.ref(`ride-requests/${rideId}`).remove();
         
         if (accepted) {
-            get(ref(database, `rides/${rideId}`)).then(snapshot => {
+            database.ref(`rides/${rideId}`).get().then(snapshot => {
                 if(snapshot.exists()) {
                     const rideData = snapshot.val() as Ride;
                     const updates: { [key: string]: any } = {};
                     updates[`/rides/${rideId}/status`] = RideStatus.ACTIVE;
                     updates[`/rides/${rideId}/driverId`] = authUser.uid;
                     updates[`/drivers/${authUser.uid}/currentRideId`] = rideId;
-                    update(ref(database), updates);
+                    database.ref().update(updates);
                 }
             });
         }
@@ -526,7 +550,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/rides/${rideId}/bonus`] = totalBonus;
     
         // Create a debit transaction for student
-        const newTransactionRef = push(ref(database, 'transactions'));
+        const newTransactionRef = database.ref('transactions').push();
         const transactionId = newTransactionRef.key!;
         const debitTransaction: Transaction = {
             id: transactionId,
@@ -562,7 +586,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/drivers/${authUser.uid}/totalRides`] = firebase.database.ServerValue.increment(1);
         updates[`/drivers/${authUser.uid}/totalCo2Savings`] = firebase.database.ServerValue.increment(co2Savings);
     
-        await update(ref(database), updates);
+        await database.ref().update(updates);
     };
     
     const submitRating = async (rideId: string, driverId: string, rating: number, feedback: string) => {
@@ -573,8 +597,8 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     
         try {
-            const driverRef = ref(database, `drivers/${driverId}`);
-            const driverSnapshot = await get(driverRef);
+            const driverRef = database.ref(`drivers/${driverId}`);
+            const driverSnapshot = await driverRef.get();
     
             if (!driverSnapshot.exists()) {
                 console.error("Driver not found for rating.");
@@ -598,7 +622,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
             }
     
             // Re-calculate and sync total rides for the student to ensure accuracy.
-            const allRidesSnapshot = await get(ref(database, 'rides'));
+            const allRidesSnapshot = await database.ref('rides').get();
             if (allRidesSnapshot.exists()) {
                 const allRidesData = allRidesSnapshot.val();
                 const ridesList: Ride[] = Object.values(allRidesData);
@@ -614,7 +638,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                 updates[`/students/${authUser.uid}/sharedRides`] = sharedRidesCount;
             }
     
-            await update(ref(database), updates);
+            await database.ref().update(updates);
             showNotification('Feedback Received', 'Thank you for rating your ride!');
     
         } catch (error) {
@@ -629,7 +653,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates[`/drivers/${authUser.uid}/hasCompletedOnboarding`] = true;
         updates[`/drivers/${authUser.uid}/vehicleDetails`] = vehicleDetails;
         updates[`/drivers/${authUser.uid}/isVerified`] = true;
-        await update(ref(database), updates);
+        await database.ref().update(updates);
     };
 
     const uploadProfilePicture = async (file: File, userId: string): Promise<string> => {
@@ -654,7 +678,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
             }
     
             const path = `${authUser.role}s/${authUser.uid}`;
-            await update(ref(database, path), dataToUpdate);
+            await database.ref(path).update(dataToUpdate);
             showNotification('Success', 'Profile updated successfully!');
     
         } catch (error) {

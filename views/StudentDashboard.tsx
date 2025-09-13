@@ -5,6 +5,9 @@ declare namespace google {
             lat: number;
             lng: number;
         }
+        // FIX: Add a class declaration to the namespace. This informs TypeScript that 'google.maps'
+        // is not just a type namespace but also a runtime object, resolving the "Cannot use namespace as a value" error.
+        class DirectionsService {}
     }
 }
 
@@ -19,7 +22,9 @@ import { useNotification } from '../contexts/NotificationContext';
 import { calculateFare } from '../ai/FareCalculator';
 import FareBreakdownModal from '../components/FareBreakdownModal';
 import { database } from '../firebase';
-import { ref, get } from 'firebase/database';
+// FIX: The modular imports 'ref' and 'get' are not available in the compat library.
+// They have been removed, and the database call below is updated to compat syntax.
+
 
 const MOCK_PICKUP_COORDS = { lat: 13.6288, lng: 79.4192 };
 const MOCK_DESTINATION_COORDS = { lat: 13.6330, lng: 79.4137 };
@@ -59,12 +64,17 @@ const StudentDashboard: React.FC = () => {
     // State for map
     const [mapsApiLoaded, setMapsApiLoaded] = useState((window as any).googleMapsApiLoaded || false);
     const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
+    const [eta, setEta] = useState<string | null>(null);
 
     // State for rating modal
     const [rideToRate, setRideToRate] = useState<{ride: Ride, driver: Driver | null} | null>(null);
     const [rating, setRating] = useState(0);
     const [feedback, setFeedback] = useState('');
     const prevRecentRidesLength = useRef(recentRides.length);
+
+    // State for ride history pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const RIDES_PER_PAGE = 10;
 
     // State for fare calculation
     const [fareDetails, setFareDetails] = useState<FareBreakdownDetails | null>(null);
@@ -106,6 +116,32 @@ const StudentDashboard: React.FC = () => {
         );
         return () => navigator.geolocation.clearWatch(watchId);
     }, [showNotification]);
+    
+    // Effect to reliably detect when the async Google Maps script has loaded.
+    useEffect(() => {
+        if (mapsApiLoaded) return;
+
+        const checkApiLoaded = () => {
+            // This is a more robust check. It ensures not only that the main Maps API
+            // script has loaded (via the initMap callback), but also that the 'directions'
+            // library is available before we try to render the map component that uses it.
+            if ((window as any).googleMapsApiLoaded && typeof google !== 'undefined' && google.maps?.DirectionsService) {
+                setMapsApiLoaded(true);
+                return true;
+            }
+            return false;
+        };
+
+        if (checkApiLoaded()) return;
+
+        const intervalId = setInterval(() => {
+            if (checkApiLoaded()) {
+                clearInterval(intervalId);
+            }
+        }, 200);
+
+        return () => clearInterval(intervalId);
+    }, [mapsApiLoaded]);
 
     // Check for completed rides to show rating modal
     useEffect(() => {
@@ -118,7 +154,8 @@ const StudentDashboard: React.FC = () => {
                 
                 const fetchDriver = async (driverId: string) => {
                     try {
-                        const driverSnapshot = await get(ref(database, `drivers/${driverId}`));
+                        // FIX: Updated to use Firebase v8 compat syntax.
+                        const driverSnapshot = await database.ref(`drivers/${driverId}`).get();
                         if (driverSnapshot.exists()) {
                             return driverSnapshot.val() as Driver;
                         }
@@ -248,6 +285,12 @@ const StudentDashboard: React.FC = () => {
 
     const hasEmergencyContact = !!(student?.emergencyContact?.name && student.emergencyContact.phone);
 
+    // Pagination logic
+    const indexOfLastRide = currentPage * RIDES_PER_PAGE;
+    const indexOfFirstRide = indexOfLastRide - RIDES_PER_PAGE;
+    const currentRides = recentRides.slice(indexOfFirstRide, indexOfLastRide);
+    const totalPages = Math.ceil(recentRides.length / RIDES_PER_PAGE);
+
     return (
         <>
             <div className="row gy-4">
@@ -307,7 +350,7 @@ const StudentDashboard: React.FC = () => {
                                     
                                     {/* --- MIDDLE (MAP) PART --- */}
                                     <div className="my-3" style={{ flex: '1 1 auto', minHeight: '250px' }}>
-                                        {mapsApiLoaded ? <GoogleMap driverLocation={driverForRide?.location || null} userLocation={userLocation} /> : <MapPlaceholder />}
+                                        {mapsApiLoaded ? <GoogleMap driverLocation={driverForRide?.location || null} userLocation={userLocation} destinationCoords={activeRide.destinationCoords} onRouteUpdate={setEta} /> : <MapPlaceholder />}
                                     </div>
                                     
                                     {/* --- BOTTOM PART --- */}
@@ -315,7 +358,10 @@ const StudentDashboard: React.FC = () => {
                                         <div className="ride-progress">
                                             <div className="progress-bar" style={{ width: `${rideProgressPercentage}%` }}></div>
                                         </div>
-                                        <span className="progress-label">En route to {activeRide.destination}</span>
+                                        <div className="d-flex justify-content-between align-items-baseline">
+                                            <span className="progress-label">En route to {activeRide.destination}</span>
+                                            {eta && <span className="progress-label small text-muted">ETA: {eta}</span>}
+                                        </div>
 
                                         <div className="mt-3 text-center">
                                             <div className="ride-actions-grid">
@@ -372,7 +418,7 @@ const StudentDashboard: React.FC = () => {
                                     </div>
                                     <div className="destination-chips" style={{ marginTop: '0.25rem', marginBottom: '1.5rem' }}>
                                         {["MBU Main Gate", "Hostel Block C", "Library"].map(loc => (
-                                            <button type="button" key={loc} className="destination-chip" onClick={() => setPickup(loc)}>{loc}</button>
+                                            <button type="button" key={loc} className={`destination-chip ${pickup.trim().toLowerCase() === loc.toLowerCase() ? 'active' : ''}`} onClick={() => setPickup(loc)}>{loc}</button>
                                         ))}
                                     </div>
                                     
@@ -383,7 +429,7 @@ const StudentDashboard: React.FC = () => {
                                     </div>
                                     <div className="destination-chips" style={{ marginTop: '0.25rem', marginBottom: '1.5rem' }}>
                                         {["Tirupati Railway Station", "Central Mall", "City Bus Stand"].map(loc => (
-                                            <button type="button" key={loc} className="destination-chip" onClick={() => setDestination(loc)}>{loc}</button>
+                                            <button type="button" key={loc} className={`destination-chip ${destination.trim().toLowerCase() === loc.toLowerCase() ? 'active' : ''}`} onClick={() => setDestination(loc)}>{loc}</button>
                                         ))}
                                     </div>
 
@@ -419,23 +465,56 @@ const StudentDashboard: React.FC = () => {
                         </div>
                         <div className="col-lg-7">
                             <div className="d-flex flex-column gap-4">
-                                <div className="app-card">
-                                    <div className="section-header">
-                                        <h3 className="section-title">Ride History</h3>
-                                    </div>
-                                    {recentRides.length > 0 ? recentRides.map(ride => (
-                                        <div key={ride.id} className="ride-item">
-                                            <div className="ride-destination">
-                                                <i className="fas fa-map-marker-alt me-2 text-primary"></i>
-                                                {ride.destination}
-                                                <span className={`badge ms-2 ${ride.status === RideStatus.COMPLETED ? 'bg-success' : 'bg-danger'}`}>{ride.status}</span>
-                                            </div>
-                                            <div className="ride-date">{new Date(ride.date).toLocaleDateString()}</div>
-                                            <div className="ride-fare">₹{ride.fare.toFixed(2)}</div>
+                                {recentRides.length > 0 && (
+                                    <div className="app-card">
+                                        <div className="section-header">
+                                            <h3 className="section-title">Recent Rides</h3>
                                         </div>
-                                    )) : <p>No completed rides yet.</p>}
-                                </div>
+                                        {currentRides.map(ride => (
+                                            <div key={ride.id} className="ride-item">
+                                                <div className="ride-destination">
+                                                    <i className="fas fa-map-marker-alt me-2 text-primary"></i>
+                                                    {ride.destination}
+                                                    <span className={`badge ms-2 ${ride.status === RideStatus.COMPLETED ? 'bg-success' : 'bg-danger'}`}>{ride.status}</span>
+                                                </div>
+                                                <div className="ride-date">{new Date(ride.date).toLocaleDateString()}</div>
+                                                <div className="ride-fare">₹{ride.fare.toFixed(2)}</div>
+                                            </div>
+                                        ))}
+                                        {totalPages > 1 && (
+                                            <div className="d-flex justify-content-center align-items-center mt-4 pagination-controls">
+                                                <button
+                                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                    disabled={currentPage === 1}
+                                                    className="btn-action"
+                                                    aria-label="Previous page"
+                                                >
+                                                    &lt;
+                                                </button>
+                                                
+                                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                    <button
+                                                        key={page}
+                                                        onClick={() => setCurrentPage(page)}
+                                                        className={`btn-action ${currentPage === page ? 'active' : ''}`}
+                                                        aria-current={currentPage === page ? 'page' : undefined}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                ))}
 
+                                                <button
+                                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                    disabled={currentPage === totalPages}
+                                                    className="btn-action"
+                                                    aria-label="Next page"
+                                                >
+                                                    &gt;
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="app-card accent-card">
                                     <div className="d-flex align-items-center">
                                         <div className="stats-icon me-3 flex-shrink-0" style={{background: 'rgba(203, 161, 53, 0.2)', color: 'var(--accent)', width: '60px', height: '60px'}}>

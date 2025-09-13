@@ -675,6 +675,21 @@
             background: rgba(0,0,0,0.2);
         }
 
+        .pagination-controls .btn-action {
+            min-width: 40px;
+            padding: 0.5rem;
+            margin: 0 0.2rem;
+        }
+        .pagination-controls .btn-action.active {
+            background: var(--accent);
+            color: var(--dark) !important;
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+        body.light-theme .pagination-controls .btn-action.active {
+            color: #fff !important;
+        }
+
         /* Recharts Theming */
         .recharts-cartesian-grid-horizontal line,
         .recharts-cartesian-grid-vertical line {
@@ -746,7 +761,7 @@
   }
 }
 </script>
-    <script src="https://maps.googleapis.com/maps/api/js?libraries=marker&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCnitHQoT1WWi0ko6IAfsXCmblh0EOpgtI&libraries=marker,directions&callback=initMap" async defer></script>
     <script>
       function initMap() {
         // This callback function is called once the Google Maps API has loaded.

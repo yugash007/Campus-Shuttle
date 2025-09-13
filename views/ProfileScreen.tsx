@@ -1,13 +1,22 @@
-
 import React, { useState, useEffect } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { Student, Driver } from '../types';
 import ProfilePicture from '../components/ProfilePicture';
-import { useNotification } from '../contexts/NotificationContext';
+
+// A small, self-contained component for displaying profile details in a consistent way.
+const ProfileDetailItem: React.FC<{ icon: string; label: string; value?: string | number }> = ({ icon, label, value }) => (
+    <div className="d-flex align-items-center mb-4">
+        <i className={`fas ${icon} fa-fw me-3 text-muted`} style={{ width: '24px', fontSize: '1.2rem', textAlign: 'center' }}></i>
+        <div>
+            <div className="small text-muted">{label}</div>
+            <div className="fw-bold">{value || 'Not set'}</div>
+        </div>
+    </div>
+);
+
 
 const ProfileScreen: React.FC = () => {
     const { authUser, student, driver, setView, updateUserProfile } = useFirebase();
-    const { showNotification } = useNotification();
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     
@@ -82,10 +91,8 @@ const ProfileScreen: React.FC = () => {
             setIsEditing(false);
         } catch (error) {
             // The error is already logged and notified by the context.
-            // We just need to handle UI state here.
             console.error("Caught error in ProfileScreen:", error);
         } finally {
-            // This will run whether the try block succeeds or fails.
             setLoading(false);
         }
     };
@@ -111,124 +118,142 @@ const ProfileScreen: React.FC = () => {
     };
 
     if (!userProfile) {
-        return <div className="text-center p-5">Loading profile...</div>;
+        return <div className="text-center p-5"><p className="text-white">Loading profile...</p></div>;
     }
-
-    const renderDetailItem = (icon: string, label: string, value: string | number | undefined) => (
-        <div className="d-flex align-items-center mb-3">
-            <i className={`fas ${icon} fa-fw me-3 text-muted`} style={{width: '20px'}}></i>
-            <div>
-                <div className="small text-muted">{label}</div>
-                <div className="fw-bold">{value || 'Not set'}</div>
-            </div>
-        </div>
-    );
 
     return (
         <div>
             <button onClick={() => setView('dashboard')} className="btn-action mb-4">
                 <i className="fas fa-arrow-left me-2"></i>Back to Dashboard
             </button>
-            <div className="app-card profile-card">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h3 className="booking-title mb-0">Profile & Settings</h3>
-                    {!isEditing && (
-                        <button onClick={() => setIsEditing(true)} className="btn-action">
-                            <i className="fas fa-pencil-alt me-2"></i>Edit Profile
-                        </button>
+            
+            <div className="row gy-4">
+
+                {/* --- Left Column: Avatar & Static Info --- */}
+                <div className="col-lg-4">
+                    <div className="app-card text-center p-4">
+                        <ProfilePicture
+                            src={userProfile.photoURL}
+                            preview={profilePicPreview}
+                            initial={userInitial}
+                            isEditable={isEditing}
+                            onFileSelect={handleFileSelect}
+                        />
+                        <h4 className="mt-3 mb-1">{formData.name || userProfile.name}</h4>
+                        <p className="text-muted mb-2">{authUser?.email}</p>
+                        <span className={`badge text-capitalize ${userProfile.role === 'student' ? 'bg-primary' : 'bg-success'}`}>{userProfile.role}</span>
+                    </div>
+
+                     {driver && driver.vehicleDetails && (
+                        <div className="app-card mt-4 p-4">
+                            <h5 className="section-title mb-3">Vehicle</h5>
+                            <ProfileDetailItem icon="fa-car" label="Make & Model" value={`${driver.vehicleDetails.make} ${driver.vehicleDetails.model}`} />
+                            <ProfileDetailItem icon="fa-id-card" label="License Plate" value={driver.vehicleDetails.licensePlate} />
+                        </div>
                     )}
                 </div>
 
-                <ProfilePicture
-                    src={userProfile.photoURL}
-                    preview={profilePicPreview}
-                    initial={userInitial}
-                    isEditable={isEditing}
-                    onFileSelect={handleFileSelect}
-                />
+                {/* --- Right Column: Editable Details & Ride History --- */}
+                <div className="col-lg-8">
+                    <div className="app-card p-4">
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+                            <h3 className="booking-title mb-0">Profile Information</h3>
+                            {!isEditing && (
+                                <button onClick={() => setIsEditing(true)} className="btn-action">
+                                    <i className="fas fa-pencil-alt me-2"></i>Edit Profile
+                                </button>
+                            )}
+                        </div>
+                        
+                        {isEditing ? (
+                            <>
+                                <h5 className="section-title mb-3">Personal Details</h5>
+                                <div className="row">
+                                    <div className="col-md-6 mb-3">
+                                        <div className="form-group-floating">
+                                            <i className="fas fa-user form-group-icon"></i>
+                                            <input id="name" type="text" name="name" className="form-control" value={formData.name || ''} onChange={handleInputChange} placeholder="Full Name" />
+                                            <label htmlFor="name">Full Name</label>
+                                        </div>
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <div className="form-group-floating">
+                                            <i className="fas fa-phone form-group-icon"></i>
+                                            <input id="mobileNumber" type="tel" name="mobileNumber" className="form-control" value={formData.mobileNumber || ''} onChange={handleInputChange} placeholder="e.g., 9876543210" />
+                                            <label htmlFor="mobileNumber">Mobile Number</label>
+                                        </div>
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <div className="form-group-floating">
+                                            <i className="fas fa-birthday-cake form-group-icon"></i>
+                                            <input id="age" type="number" name="age" className="form-control" value={formData.age || ''} onChange={handleInputChange} placeholder="e.g., 21" />
+                                            <label htmlFor="age">Age</label>
+                                        </div>
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <label htmlFor="gender" className="form-label" style={{position: 'absolute', top: '-10px', left: '12px', fontSize: '0.75rem', color: 'var(--accent)'}}>Gender</label>
+                                        <select id="gender" name="gender" className="form-control" value={formData.gender || ''} onChange={handleInputChange} style={{height: '56px', paddingTop: '1.2rem'}}>
+                                            <option value="">Select...</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                            <option value="Prefer not to say">Prefer not to say</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                {/* Non-Editable Info */}
-                <div className="row mb-3">
-                    <div className="col-md-6">
-                        {renderDetailItem('fa-envelope', 'Email', authUser?.email)}
-                    </div>
-                    <div className="col-md-6">
-                        {renderDetailItem('fa-user-tag', 'Role', userProfile.role)}
+                                {student && (
+                                    <>
+                                        <h5 className="section-title mt-4 mb-3">Emergency Contact</h5>
+                                        <div className="row">
+                                            <div className="col-md-6 mb-3">
+                                                 <div className="form-group-floating">
+                                                    <i className="fas fa-user-shield form-group-icon"></i>
+                                                    <input id="emergencyContactName" type="text" name="emergencyContactName" className="form-control" value={formData.emergencyContact?.name || ''} onChange={handleInputChange} placeholder="e.g., Jane Doe" />
+                                                    <label htmlFor="emergencyContactName">Contact Name</label>
+                                                 </div>
+                                            </div>
+                                            <div className="col-md-6 mb-3">
+                                                 <div className="form-group-floating">
+                                                    <i className="fas fa-mobile-alt form-group-icon"></i>
+                                                    <input id="emergencyContactPhone" type="tel" name="emergencyContactPhone" className="form-control" value={formData.emergencyContact?.phone || ''} onChange={handleInputChange} placeholder="e.g., 9876543210" />
+                                                    <label htmlFor="emergencyContactPhone">Contact Phone</label>
+                                                 </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                <div className="d-flex justify-content-end mt-4">
+                                    <button onClick={handleCancel} className="btn-action me-2">Cancel</button>
+                                    <button onClick={handleSave} className="btn-book" disabled={loading} style={{width: 'auto', padding: '0.8rem 1.5rem'}}>
+                                        {loading ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <h5 className="section-title mb-3">Personal Details</h5>
+                                <div className="row">
+                                    <div className="col-md-6"><ProfileDetailItem icon="fa-user" label="Full Name" value={userProfile.name} /></div>
+                                    <div className="col-md-6"><ProfileDetailItem icon="fa-phone" label="Mobile Number" value={userProfile.mobileNumber} /></div>
+                                    <div className="col-md-6"><ProfileDetailItem icon="fa-birthday-cake" label="Age" value={userProfile.age} /></div>
+                                    <div className="col-md-6"><ProfileDetailItem icon="fa-venus-mars" label="Gender" value={userProfile.gender} /></div>
+                                </div>
+                                
+                                {student && student.emergencyContact && (
+                                    <>
+                                        <h5 className="section-title mt-4 mb-3">Emergency Contact</h5>
+                                        <div className="row">
+                                            <div className="col-md-6"><ProfileDetailItem icon="fa-user-shield" label="Contact Name" value={student.emergencyContact.name} /></div>
+                                            <div className="col-md-6"><ProfileDetailItem icon="fa-mobile-alt" label="Contact Phone" value={student.emergencyContact.phone} /></div>
+                                        </div>
+                                    </>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
-                 {student && (
-                    <div className="row mb-4">
-                        <div className="col-md-6">
-                            {renderDetailItem('fa-wallet', 'Wallet Balance', `₹${student.walletBalance.toFixed(2)}`)}
-                        </div>
-                    </div>
-                )}
-                {driver && driver.vehicleDetails && (
-                     <div className="mb-4">
-                        <h5 className="section-title mb-3" style={{borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem'}}>Vehicle Information</h5>
-                        <div className="row">
-                            <div className="col-md-4">{renderDetailItem('fa-car', 'Make', driver.vehicleDetails.make)}</div>
-                            <div className="col-md-4">{renderDetailItem('fa-car-side', 'Model', driver.vehicleDetails.model)}</div>
-                            <div className="col-md-4">{renderDetailItem('fa-id-card', 'License Plate', driver.vehicleDetails.licensePlate)}</div>
-                        </div>
-                    </div>
-                )}
-                
-                {/* Editable Info */}
-                <h5 className="section-title mb-3" style={{borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem'}}>Personal Details</h5>
-                <div className="row">
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">Full Name</label>
-                        <input type="text" name="name" className="form-control" value={formData.name || ''} onChange={handleInputChange} disabled={!isEditing} />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">Mobile Number</label>
-                        <input type="tel" name="mobileNumber" className="form-control" value={formData.mobileNumber || ''} onChange={handleInputChange} disabled={!isEditing} placeholder="e.g., 9876543210" />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">Age</label>
-                        <input type="number" name="age" className="form-control" value={formData.age || ''} onChange={handleInputChange} disabled={!isEditing} placeholder="e.g., 21" />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">Gender</label>
-                        <select name="gender" className="form-control" value={formData.gender || ''} onChange={handleInputChange} disabled={!isEditing}>
-                            <option value="">Select...</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                            <option value="Prefer not to say">Prefer not to say</option>
-                        </select>
-                    </div>
-                </div>
-
-                {student && (
-                    <>
-                        <h5 className="section-title my-3" style={{borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem'}}>Emergency Contact</h5>
-                        <p className="small text-muted" style={{marginTop: '-0.75rem', marginBottom: '1rem'}}>
-                            This contact will be alerted if you use the SOS feature during a ride.
-                        </p>
-                        <div className="row">
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Contact Name</label>
-                                <input type="text" name="emergencyContactName" className="form-control" value={formData.emergencyContact?.name || ''} onChange={handleInputChange} disabled={!isEditing} placeholder="e.g., Jane Doe" />
-                            </div>
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Contact Phone</label>
-                                <input type="tel" name="emergencyContactPhone" className="form-control" value={formData.emergencyContact?.phone || ''} onChange={handleInputChange} disabled={!isEditing} placeholder="e.g., 9876543210" />
-                            </div>
-                        </div>
-                    </>
-                )}
-
-
-                {isEditing && (
-                    <div className="d-flex justify-content-end mt-4">
-                        <button onClick={handleCancel} className="btn-action me-2">Cancel</button>
-                        <button onClick={handleSave} className="btn-book" disabled={loading} style={{width: 'auto', padding: '0.8rem 1.5rem'}}>
-                            {loading ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
-                )}
             </div>
         </div>
     );
