@@ -7,7 +7,7 @@ import 'firebase/compat/storage';
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyACLcK32vH_cOjEat1D36OTjkgM0MMBIuM",
+  apiKey: "YOUR_API_KEY",
   authDomain: "campus-shuttle-48ed9.firebaseapp.com",
   // NOTE: databaseURL is required for the Realtime Database compat library.
   databaseURL: "https://campus-shuttle-48ed9-default-rtdb.firebaseio.com",
