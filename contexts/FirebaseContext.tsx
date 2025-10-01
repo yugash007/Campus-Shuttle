@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import firebase from 'firebase/compat/app';
-import { auth, database, storage } from '../firebase';
+import firebase, { auth, database, storage } from '../firebase';
 // FIX: The modular imports are not available in the compat library.
 // All database calls have been updated to use the v8 compat syntax (e.g., database.ref()).
 import { User, Student, Driver, Ride, RideStatus, UserRole, Transaction, ScheduledEvent, RidePlan, RideType } from '../types';

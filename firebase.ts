@@ -1,4 +1,3 @@
-
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
@@ -7,7 +6,7 @@ import 'firebase/compat/storage';
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyACLcK32vH_cOjEat1D36OTjkgM0MMBIuM",
   authDomain: "campus-shuttle-48ed9.firebaseapp.com",
   // NOTE: databaseURL is required for the Realtime Database compat library.
   databaseURL: "https://campus-shuttle-48ed9-default-rtdb.firebaseio.com",
@@ -18,10 +17,10 @@ const firebaseConfig = {
   measurementId: "G-PEB1CGKRQ4"
 };
 
-// Initialize Firebase if it hasn't been already
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+// Initialize Firebase. The guard for existing apps is removed to simplify initialization
+// and potentially resolve a race condition with service attachment in this specific environment.
+firebase.initializeApp(firebaseConfig);
+
 
 // Export the initialized services for use in other parts of the app
 const auth = firebase.auth();
@@ -29,3 +28,4 @@ const database = firebase.database();
 const storage = firebase.storage();
 
 export { auth, database, storage };
+export default firebase;

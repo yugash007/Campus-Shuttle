@@ -5,9 +5,52 @@ declare namespace google {
             lat: number;
             lng: number;
         }
-        // FIX: Add a class declaration to the namespace. This informs TypeScript that 'google.maps'
-        // is not just a type namespace but also a runtime object, resolving the "Cannot use namespace as a value" error.
-        class DirectionsService {}
+        class Map {
+            constructor(mapDiv: HTMLDivElement, opts?: any);
+            setCenter(center: LatLngLiteral): void;
+            setZoom(zoom: number): void;
+            fitBounds(bounds: LatLngBounds): void;
+        }
+        class LatLngBounds {
+            constructor(sw?: LatLngLiteral, ne?: LatLngLiteral);
+            extend(point: LatLngLiteral): void;
+        }
+        namespace marker {
+            class AdvancedMarkerElement {
+                constructor(opts?: any);
+                position?: LatLngLiteral | null;
+                map?: Map | null;
+            }
+        }
+        class DirectionsService {
+            route(request: DirectionsRequest, callback: (result: DirectionsResult | null, status: DirectionsStatus) => void): void;
+        }
+        class DirectionsRenderer {
+            constructor(opts?: any);
+            setMap(map: Map | null): void;
+            setDirections(directions: DirectionsResult): void;
+        }
+        interface DirectionsRequest {
+            origin: LatLngLiteral;
+            destination: LatLngLiteral;
+            travelMode: TravelMode;
+        }
+        interface DirectionsResult {
+            routes: DirectionsRoute[];
+        }
+        interface DirectionsRoute {
+            legs: DirectionsLeg[];
+        }
+        interface DirectionsLeg {
+            duration: { text: string; value: number; };
+            distance: { text: string; value: number; };
+        }
+        enum TravelMode {
+            DRIVING = 'DRIVING',
+        }
+        enum DirectionsStatus {
+            OK = 'OK',
+        }
     }
 }
 
@@ -65,6 +108,7 @@ const StudentDashboard: React.FC = () => {
     const [mapsApiLoaded, setMapsApiLoaded] = useState((window as any).googleMapsApiLoaded || false);
     const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
     const [eta, setEta] = useState<string | null>(null);
+    const [isApiKeyMissing, setIsApiKeyMissing] = useState(false);
 
     // State for rating modal
     const [rideToRate, setRideToRate] = useState<{ride: Ride, driver: Driver | null} | null>(null);
@@ -80,6 +124,21 @@ const StudentDashboard: React.FC = () => {
     const [fareDetails, setFareDetails] = useState<FareBreakdownDetails | null>(null);
     const [showFareModal, setShowFareModal] = useState(false);
     const [showSosModal, setShowSosModal] = useState(false);
+
+    useEffect(() => {
+        // This effect runs once on mount to check for the placeholder API key.
+        const scripts = document.getElementsByTagName('script');
+        let mapScriptSrc = '';
+        for (let i = 0; i < scripts.length; i++) {
+            if (scripts[i].src.includes('maps.googleapis.com')) {
+                mapScriptSrc = scripts[i].src;
+                break;
+            }
+        }
+        if (mapScriptSrc.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
+            setIsApiKeyMissing(true);
+        }
+    }, []);
 
     useEffect(() => {
         // Simulate driver availability for shared rides
@@ -350,7 +409,7 @@ const StudentDashboard: React.FC = () => {
                                     
                                     {/* --- MIDDLE (MAP) PART --- */}
                                     <div className="my-3" style={{ flex: '1 1 auto', minHeight: '250px' }}>
-                                        {mapsApiLoaded ? <GoogleMap driverLocation={driverForRide?.location || null} userLocation={userLocation} destinationCoords={activeRide.destinationCoords} onRouteUpdate={setEta} /> : <MapPlaceholder />}
+                                        {mapsApiLoaded ? <GoogleMap driverLocation={driverForRide?.location || null} userLocation={userLocation} destinationCoords={activeRide.destinationCoords} onRouteUpdate={setEta} /> : <MapPlaceholder isApiKeyMissing={isApiKeyMissing} />}
                                     </div>
                                     
                                     {/* --- BOTTOM PART --- */}

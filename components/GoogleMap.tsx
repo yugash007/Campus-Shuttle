@@ -1,5 +1,4 @@
-
-// FIX: The 'google' namespace was not found. Added ambient type declarations for Google Maps.
+// FIX: Added ambient Google Maps type declarations to resolve 'Cannot find namespace "google"' errors.
 declare namespace google {
     namespace maps {
         interface LatLngLiteral {
@@ -54,6 +53,7 @@ declare namespace google {
         }
     }
 }
+
 
 import React, { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
