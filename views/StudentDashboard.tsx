@@ -1,73 +1,12 @@
-
-declare namespace google {
-    namespace maps {
-        interface LatLngLiteral {
-            lat: number;
-            lng: number;
-        }
-        class Map {
-            constructor(mapDiv: HTMLDivElement, opts?: any);
-            setCenter(center: LatLngLiteral): void;
-            setZoom(zoom: number): void;
-            fitBounds(bounds: LatLngBounds): void;
-        }
-        class LatLngBounds {
-            constructor(sw?: LatLngLiteral, ne?: LatLngLiteral);
-            extend(point: LatLngLiteral): void;
-        }
-        namespace marker {
-            class AdvancedMarkerElement {
-                constructor(opts?: any);
-                position?: LatLngLiteral | null;
-                map?: Map | null;
-            }
-        }
-        class DirectionsService {
-            route(request: DirectionsRequest, callback: (result: DirectionsResult | null, status: DirectionsStatus) => void): void;
-        }
-        class DirectionsRenderer {
-            constructor(opts?: any);
-            setMap(map: Map | null): void;
-            setDirections(directions: DirectionsResult): void;
-        }
-        interface DirectionsRequest {
-            origin: LatLngLiteral;
-            destination: LatLngLiteral;
-            travelMode: TravelMode;
-        }
-        interface DirectionsResult {
-            routes: DirectionsRoute[];
-        }
-        interface DirectionsRoute {
-            legs: DirectionsLeg[];
-        }
-        interface DirectionsLeg {
-            duration: { text: string; value: number; };
-            distance: { text: string; value: number; };
-        }
-        enum TravelMode {
-            DRIVING = 'DRIVING',
-        }
-        enum DirectionsStatus {
-            OK = 'OK',
-        }
-    }
-}
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { Ride, RideType, RideStatus, Driver, FareBreakdownDetails, Coordinates } from '../types';
-import GoogleMap from '../components/GoogleMap';
 import MapPlaceholder from '../components/MapPlaceholder';
 import { getStudentNudge, Nudge } from '../ai/EcoNudgeEngine';
 import EcoAnalytics from '../components/EcoAnalytics';
 import { useNotification } from '../contexts/NotificationContext';
 import { calculateFare } from '../ai/FareCalculator';
 import FareBreakdownModal from '../components/FareBreakdownModal';
-import { database } from '../firebase';
-// FIX: The modular imports 'ref' and 'get' are not available in the compat library.
-// They have been removed, and the database call below is updated to compat syntax.
-
 
 const MOCK_PICKUP_COORDS = { lat: 13.6288, lng: 79.4192 };
 const MOCK_DESTINATION_COORDS = { lat: 13.6330, lng: 79.4137 };
@@ -90,7 +29,8 @@ const StudentDashboard: React.FC = () => {
     const { 
         authUser, student, activeRide, driverForRide, recentRides, 
         cancelRide, bookRide, loading, submitRating,
-        joinWaitlist, leaveWaitlist, waitlist, setView
+        joinWaitlist, leaveWaitlist, waitlist, setView,
+        getDriverById
     } = useFirebase();
     const { showNotification } = useNotification();
     
@@ -105,10 +45,8 @@ const StudentDashboard: React.FC = () => {
     const [noDriversAvailable, setNoDriversAvailable] = useState(false);
     
     // State for map
-    const [mapsApiLoaded, setMapsApiLoaded] = useState((window as any).googleMapsApiLoaded || false);
-    const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
-    const [eta, setEta] = useState<string | null>(null);
-    const [isApiKeyMissing, setIsApiKeyMissing] = useState(false);
+    const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+    const [eta] = useState<string | null>('12 mins'); // Mock ETA
 
     // State for rating modal
     const [rideToRate, setRideToRate] = useState<{ride: Ride, driver: Driver | null} | null>(null);
@@ -124,26 +62,6 @@ const StudentDashboard: React.FC = () => {
     const [fareDetails, setFareDetails] = useState<FareBreakdownDetails | null>(null);
     const [showFareModal, setShowFareModal] = useState(false);
     const [showSosModal, setShowSosModal] = useState(false);
-
-    useEffect(() => {
-        // This effect runs once on mount to check for the placeholder API key.
-        const scripts = document.getElementsByTagName('script');
-        let mapScriptSrc = '';
-        for (let i = 0; i < scripts.length; i++) {
-            if (scripts[i].src.includes('maps.googleapis.com')) {
-                mapScriptSrc = scripts[i].src;
-                break;
-            }
-        }
-        if (mapScriptSrc.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
-            setIsApiKeyMissing(true);
-            showNotification(
-                'Action Required: Maps API Key',
-                'Live tracking is disabled. Please add your Google Maps API key to index.html to fix this.',
-                true
-            );
-        }
-    }, [showNotification]);
 
     useEffect(() => {
         // Simulate driver availability for shared rides
@@ -180,32 +98,6 @@ const StudentDashboard: React.FC = () => {
         );
         return () => navigator.geolocation.clearWatch(watchId);
     }, [showNotification]);
-    
-    // Effect to reliably detect when the async Google Maps script has loaded.
-    useEffect(() => {
-        if (mapsApiLoaded) return;
-
-        const checkApiLoaded = () => {
-            // This is a more robust check. It ensures not only that the main Maps API
-            // script has loaded (via the initMap callback), but also that the 'directions'
-            // library is available before we try to render the map component that uses it.
-            if ((window as any).googleMapsApiLoaded && typeof google !== 'undefined' && google.maps?.DirectionsService) {
-                setMapsApiLoaded(true);
-                return true;
-            }
-            return false;
-        };
-
-        if (checkApiLoaded()) return;
-
-        const intervalId = setInterval(() => {
-            if (checkApiLoaded()) {
-                clearInterval(intervalId);
-            }
-        }, 200);
-
-        return () => clearInterval(intervalId);
-    }, [mapsApiLoaded]);
 
     // Check for completed rides to show rating modal
     useEffect(() => {
@@ -216,28 +108,15 @@ const StudentDashboard: React.FC = () => {
             // Check if it's a completed ride and doesn't have a rating yet
             if (lastRide && lastRide.status === RideStatus.COMPLETED && lastRide.rating === undefined) {
                 
-                const fetchDriver = async (driverId: string) => {
-                    try {
-                        // FIX: Updated to use Firebase v8 compat syntax.
-                        const driverSnapshot = await database.ref(`drivers/${driverId}`).get();
-                        if (driverSnapshot.exists()) {
-                            return driverSnapshot.val() as Driver;
-                        }
-                    } catch (error) {
-                        console.error("Error fetching driver for rating modal:", error);
-                    }
-                    return null;
-                };
-
                 if (lastRide.driverId) {
-                    fetchDriver(lastRide.driverId).then(driver => {
+                    getDriverById(lastRide.driverId).then(driver => {
                         setRideToRate({ ride: lastRide, driver });
                     });
                 }
             }
         }
         prevRecentRidesLength.current = recentRides.length;
-    }, [recentRides]);
+    }, [recentRides, getDriverById]);
 
     const handleBookingAction = () => {
         if (!fareDetails) {
@@ -414,7 +293,7 @@ const StudentDashboard: React.FC = () => {
                                     
                                     {/* --- MIDDLE (MAP) PART --- */}
                                     <div className="my-3" style={{ flex: '1 1 auto', minHeight: '250px' }}>
-                                        {mapsApiLoaded ? <GoogleMap driverLocation={driverForRide?.location || null} userLocation={userLocation} destinationCoords={activeRide.destinationCoords} onRouteUpdate={setEta} /> : <MapPlaceholder isApiKeyMissing={isApiKeyMissing} />}
+                                        <MapPlaceholder isApiKeyMissing={false} />
                                     </div>
                                     
                                     {/* --- BOTTOM PART --- */}
