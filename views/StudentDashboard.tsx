@@ -137,8 +137,13 @@ const StudentDashboard: React.FC = () => {
         }
         if (mapScriptSrc.includes('YOUR_GOOGLE_MAPS_API_KEY')) {
             setIsApiKeyMissing(true);
+            showNotification(
+                'Action Required: Maps API Key',
+                'Live tracking is disabled. Please add your Google Maps API key to index.html to fix this.',
+                true
+            );
         }
-    }, []);
+    }, [showNotification]);
 
     useEffect(() => {
         // Simulate driver availability for shared rides

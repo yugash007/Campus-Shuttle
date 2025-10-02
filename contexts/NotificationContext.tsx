@@ -5,11 +5,12 @@ interface NotificationState {
   id: number;
   title: string;
   message: string;
+  persistent?: boolean;
 }
 
 interface NotificationContextType {
   notification: NotificationState | null;
-  showNotification: (title: string, message: string) => void;
+  showNotification: (title: string, message: string, persistent?: boolean) => void;
   hideNotification: () => void;
 }
 
@@ -18,8 +19,8 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notification, setNotification] = useState<NotificationState | null>(null);
 
-  const showNotification = useCallback((title: string, message: string) => {
-    setNotification({ id: Date.now(), title, message });
+  const showNotification = useCallback((title: string, message: string, persistent = false) => {
+    setNotification({ id: Date.now(), title, message, persistent });
   }, []);
 
   const hideNotification = useCallback(() => {

@@ -6,7 +6,7 @@ const NotificationToast: React.FC = () => {
   const { notification, hideNotification } = useNotification();
 
   useEffect(() => {
-    if (notification) {
+    if (notification && !notification.persistent) {
       const timer = setTimeout(() => {
         hideNotification();
       }, 5000); // Auto-hide after 5 seconds
