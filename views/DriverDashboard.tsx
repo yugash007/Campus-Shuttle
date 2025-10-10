@@ -1,147 +1,167 @@
 
-// FIX: Cast style object to React.CSSProperties to allow for custom properties.
 import React, { useEffect, useRef } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { useNotification } from '../contexts/NotificationContext';
-import EcoAnalytics from '../components/EcoAnalytics';
-import StudentHeatmap from '../components/StudentHeatmap';
+import EarningsChart from '../components/EarningsChart';
 
 const DriverDashboard: React.FC = () => {
-    const { driver, authUser, activeRide, rideRequests, toggleDriverStatus, handleRideRequest, completeRide, allRides, waitlist } = useFirebase();
+    const { driver, authUser, activeRide, rideRequests, toggleDriverStatus, handleRideRequest, completeRide, allRides, waitlist, acceptWaitlistedRide, setView } = useFirebase();
     const { showNotification } = useNotification();
     const prevRideRequestIds = useRef<Set<string>>(new Set());
 
-    // Effect to watch for new ride requests
     useEffect(() => {
         const currentRideRequestIds = new Set(rideRequests.map(r => r.id));
-
-        // Find new requests by comparing current IDs with previous IDs
         const newRequests = rideRequests.filter(r => !prevRideRequestIds.current.has(r.id));
 
         if (newRequests.length > 0) {
             newRequests.forEach(request => {
-                showNotification(
-                    'New Ride Request!',
-                    `From ${request.pickup} to ${request.destination} (₹${request.fare})`
-                );
+                showNotification('New Ride Request!', `From ${request.pickup} to ${request.destination} (₹${request.fare})`);
             });
         }
         
-        // Update the ref for the next render
         prevRideRequestIds.current = currentRideRequestIds;
     }, [rideRequests, showNotification]);
 
     if (!driver || !authUser) {
-        return <div className="d-flex justify-content-center align-items-center vh-100"><p className="text-white">Loading Driver Dashboard...</p></div>;
+        return null;
     }
 
     return (
         <div className="row gy-4">
             <div className="col-12">
                 <div className="app-card">
-                     <div className="row align-items-center">
-                        <div className="col-md-7 text-center text-md-start mb-3 mb-md-0">
-                            <div className="welcome-text">
-                                <h2>
-                                    Welcome, {driver.name}!
-                                    {driver.isVerified && <span className="badge bg-success ms-2"><i className="fas fa-check-circle me-1"></i>Verified</span>}
-                                </h2>
-                                <p className="mb-0">{driver.isOnline ? "You are online and ready for rides." : "You are offline."}</p>
-                            </div>
+                     <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div className="welcome-text">
+                            <h2>
+                                Welcome, {driver.name.split(' ')[0]}!
+                                {driver.isVerified && <i className="fas fa-check-circle text-success ms-2" title="Verified Driver"></i>}
+                            </h2>
+                            <p className="mb-0">{driver.isOnline ? "You're online and ready for rides." : "You're currently offline."}</p>
                         </div>
-                        <div className="col-md-5 text-center text-md-end">
-                            <label htmlFor="online-toggle" className="d-flex align-items-center justify-content-center justify-content-md-end" style={{ cursor: 'pointer' }}>
-                                <div className="form-check form-switch me-3">
-                                   <input 
-                                     className="form-check-input" 
-                                     type="checkbox" 
-                                     role="switch" 
-                                     id="online-toggle" 
-                                     checked={driver.isOnline} 
-                                     onChange={toggleDriverStatus} 
-                                     style={{width: '3.5em', height: '1.75em'}}
-                                    />
-                                   <label className="form-check-label ms-2" htmlFor="online-toggle">{driver.isOnline ? 'Online' : 'Offline'}</label>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="col-12">
-                <div className="row g-4">
-                    <div className="col-12">
-                        <div className="row g-4">
-                            <div className="col-6 col-md-3"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-road"></i></div><div className="stats-number">{driver.totalRides}</div><div className="stats-label">Today's Rides</div></div></div>
-                            <div className="col-6 col-md-3"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-wallet"></i></div><div className="stats-number">₹{driver.earnings.toFixed(2)}</div><div className="stats-label">Today's Earnings</div></div></div>
-                            <div className="col-6 col-md-3"><div className="app-card stats-card"><div className="stats-icon"><i className="fas fa-star"></i></div><div className="stats-number">{driver.rating}</div><div className="stats-label">Avg Rating</div></div></div>
-                            <div className="col-6 col-md-3">
-                                <EcoAnalytics co2Savings={driver.totalCo2Savings || 0} />
-                            </div>
+                        <div className="form-check form-switch p-0 d-flex align-items-center flex-shrink-0">
+                            <label className="form-check-label me-3" htmlFor="online-toggle">{driver.isOnline ? 'Online' : 'Offline'}</label>
+                           <input 
+                             className="form-check-input" 
+                             type="checkbox" 
+                             role="switch" 
+                             id="online-toggle" 
+                             checked={driver.isOnline} 
+                             onChange={toggleDriverStatus} 
+                             style={{width: '3.5em', height: '1.75em', cursor: 'pointer'}}
+                            />
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="col-12">
-                <div className="row g-4">
-                    <div className="col-lg-5">
-                         {activeRide ? (
-                             <div className="app-card">
-                                <div className="section-title mb-3">Current Ride</div>
-                                <h5>{activeRide.pickup}</h5>
-                                <p className="small">to</p>
-                                <h5>{activeRide.destination}</h5>
-                                 <div className="d-flex justify-content-between align-items-center my-3 p-3 rounded" style={{ background: 'rgba(var(--bs-success-rgb), 0.1)' }}>
-                                    <span>Fare</span>
-                                    <span className="fare-amount" style={{ fontSize: '1.5rem' }}>₹{activeRide.fare}</span>
-                                </div>
-                                <button onClick={completeRide} className="btn-book">Complete Ride</button>
+            <div className="col-lg-8">
+                 {activeRide ? (
+                     <div className="app-card d-flex flex-column h-100">
+                        <h3 className="section-title mb-4">Active Ride</h3>
+                        
+                        <div className="d-flex align-items-center mb-3">
+                            <div className="stats-icon me-3 flex-shrink-0" style={{background: 'var(--accent-bg-translucent)', color: 'var(--accent)'}}><i className="fas fa-map-marker-alt"></i></div>
+                            <div>
+                                <p className="small text-muted mb-0">Pickup</p>
+                                <h6 className="fw-bold mb-0">{activeRide.pickup}</h6>
                             </div>
-                        ) : (
-                             <div className="app-card">
-                                 {waitlist.length > 0 && (
-                                    <div className="p-3 mb-4 rounded text-center accent-card">
-                                        <h5 className="mb-1" style={{color: 'var(--accent)'}}><i className="fas fa-users me-2"></i>High Demand!</h5>
-                                        <p className="mb-0"><strong>{waitlist.length} student{waitlist.length > 1 ? 's are' : ' is'}</strong> on the waitlist for a shared ride. Go online to be matched!</p>
-                                    </div>
-                                 )}
-                                 <div className="section-title mb-3">Ride Requests</div>
-                                 {rideRequests.length > 0 ? (
-                                    <div className="d-flex flex-column gap-3">
+                        </div>
+
+                        <div className="ps-3 my-2">
+                             <div style={{borderLeft: '2px dashed var(--accent)', height: '2rem'}}></div>
+                        </div>
+
+                        <div className="d-flex align-items-center mb-4">
+                            <div className="stats-icon me-3 flex-shrink-0" style={{background: 'var(--accent-bg-translucent)', color: 'var(--accent)'}}><i className="fas fa-flag-checkered"></i></div>
+                            <div>
+                                <p className="small text-muted mb-0">Destination</p>
+                                <h6 className="fw-bold mb-0">{activeRide.destination}</h6>
+                            </div>
+                        </div>
+
+                        <hr className="my-3" style={{borderColor: 'var(--card-border-color)'}}/>
+
+                        <div className="row g-3">
+                             <div className="col-6">
+                                <div className="p-3 rounded h-100" style={{ background: 'var(--accent-bg-translucent)' }}>
+                                    <p className="small text-muted mb-0">Fare</p>
+                                    <span className="fare-amount" style={{ fontSize: '1.8rem', color: 'var(--accent)' }}>₹{activeRide.fare}</span>
+                                </div>
+                             </div>
+                             <div className="col-6">
+                                <div className="p-3 rounded h-100" style={{ background: 'var(--accent-bg-translucent)' }}>
+                                    <p className="small text-muted mb-0">Student</p>
+                                    <h6 className="fw-bold mb-0">Jane Doe</h6> {/* Placeholder name */}
+                                </div>
+                             </div>
+                        </div>
+
+                        <button onClick={completeRide} className="btn-book mt-auto w-100">Mark as Complete</button>
+                    </div>
+                ) : (
+                    <div className="d-flex flex-column gap-4">
+                        <div className="app-card">
+                            <h3 className="section-title mb-3">Incoming Requests</h3>
+                            {rideRequests.length > 0 ? (
+                                <div className="d-flex flex-column gap-3">
                                     {rideRequests.map(ride => (
-                                        <div key={ride.id} className="p-3 rounded" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
-                                            {ride.bookingType === 'Scheduled' && ride.scheduledTime && (
-                                                <div className="badge mb-2 fw-bold" style={{ background: 'var(--accent)', color: 'var(--dark)', fontSize: '0.8rem'}}>
-                                                    <i className="fas fa-clock me-1"></i>
-                                                    SCHEDULED: {new Date(ride.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <div key={ride.id} className="app-card" style={{padding: '1rem'}}>
+                                            <div className="row g-3">
+                                                <div className="col">
+                                                     {ride.bookingType === 'Scheduled' && ride.scheduledTime && (
+                                                        <div className="badge mb-2 fw-bold" style={{ background: 'var(--accent)', color: 'var(--body-bg)', fontSize: '0.8rem'}}>
+                                                            <i className="fas fa-clock me-1"></i> SCHEDULED: {new Date(ride.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    )}
+                                                    <p className="fw-bold mb-1">{ride.pickup} <i className="fas fa-long-arrow-alt-right mx-2"></i> {ride.destination}</p>
+                                                    <p className="small text-muted mb-0">{ride.type} {ride.groupSize ? `(${ride.groupSize})` : ''}</p>
                                                 </div>
-                                            )}
-                                            <p className="fw-bold mb-1">{ride.pickup} to {ride.destination}</p>
-                                            <p className="small mb-2">{ride.type} {ride.groupSize ? `(${ride.groupSize} people)` : ''}</p>
-                                            <div className="d-flex justify-content-between align-items-center">
-                                                <span className="fare-amount" style={{fontSize: '1.2rem'}}>₹{ride.fare}</span>
-                                                <div className="d-flex gap-2">
-                                                    <button onClick={() => handleRideRequest(ride.id, false)} className="btn-decline"><i className="fas fa-times"></i> Decline</button>
-                                                    <button onClick={() => handleRideRequest(ride.id, true)} className="btn-accept"><i className="fas fa-check"></i> Accept</button>
+                                                <div className="col-auto d-flex flex-column justify-content-center align-items-end">
+                                                    <span className="fare-amount mb-2" style={{fontSize: '1.5rem'}}>₹{ride.fare}</span>
+                                                    <div className="d-flex gap-2">
+                                                        <button onClick={() => handleRideRequest(ride.id, false)} className="btn-decline"><i className="fas fa-times"></i></button>
+                                                        <button onClick={() => handleRideRequest(ride.id, true)} className="btn-accept"><i className="fas fa-check"></i> Accept</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
-                                    </div>
-                                 ) : (
-                                    <p className="text-center">No new ride requests.</p>
-                                 )}
-                             </div>
-                        )}
+                                </div>
+                             ) : (
+                                <div className="empty-state">
+                                    <i className="fas fa-bed"></i>
+                                    <p>{driver.isOnline ? "Waiting for new requests..." : "Go online to see requests"}</p>
+                                </div>
+                             )}
+                        </div>
                     </div>
-                     <div className="col-lg-7">
-                         <div className="app-card">
-                             <div className="section-title mb-3">Student Activity Hotspots</div>
-                             <p className="small text-muted mb-3" style={{marginTop: '-0.5rem'}}>Busiest times based on completed rides.</p>
-                             <StudentHeatmap rides={allRides} driverId={authUser.uid} />
-                         </div>
-                     </div>
+                )}
+            </div>
+
+            <div className="col-lg-4">
+                <div className="d-flex flex-column gap-4">
+                    <div className="app-card">
+                        <h3 className="section-title mb-3">Weekly Earnings</h3>
+                        <EarningsChart data={driver.weeklyEarnings} />
+                    </div>
+
+                    {driver.isOnline && waitlist.length > 0 && (
+                        <div className="app-card">
+                            <h3 className="section-title mb-3" style={{color: 'var(--accent)'}}>Waitlist</h3>
+                            <div className="d-flex flex-column gap-3">
+                                {waitlist.map(item => (
+                                    <div key={item.studentId} className="p-3 rounded" style={{ border: '1px solid var(--accent)' }}>
+                                        <p className="fw-bold mb-1">{item.rideDetails.pickup} <i className="fas fa-long-arrow-alt-right mx-2"></i> {item.rideDetails.destination}</p>
+                                        <p className="small text-muted mb-2">{item.rideDetails.type}</p>
+                                        <div className="d-flex justify-content-between align-items-center">
+                                            <span className="fare-amount" style={{fontSize: '1.2rem'}}>₹{item.rideDetails.fare.toFixed(2)}</span>
+                                            <button onClick={() => acceptWaitlistedRide(item)} className="btn-accept">Accept Waitlisted</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

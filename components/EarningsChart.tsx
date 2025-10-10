@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Driver } from '../types';
@@ -10,28 +9,31 @@ interface EarningsChartProps {
 
 const EarningsChart: React.FC<EarningsChartProps> = ({ data }) => {
   return (
-    <div style={{ width: '100%', height: 300 }}>
+    <div style={{ width: '100%', height: 250 }}>
       <ResponsiveContainer>
         <BarChart
           data={data}
           margin={{
             top: 20,
-            right: 30,
-            left: -10,
+            right: 20,
+            left: 0,
             bottom: 5,
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="day" tick={{ fill: '#6b7280' }} />
-          <YAxis tick={{ fill: '#6b7280' }} tickFormatter={(value) => `₹${value}`} />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid-color)" />
+          <XAxis dataKey="day" tick={{ fill: 'var(--text-muted-color)', fontSize: 12 }} />
+          <YAxis tickFormatter={(value) => `₹${value}`} tick={{ fill: 'var(--text-muted-color)', fontSize: 12 }} />
           <Tooltip
-            cursor={{ fill: 'rgba(20, 184, 166, 0.1)' }}
-            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
-            labelStyle={{ color: '#1f2937' }}
+            cursor={{ fill: 'var(--accent-bg-translucent)' }}
             formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Earnings']}
+            contentStyle={{
+              background: 'var(--chart-tooltip-bg)',
+              border: '1px solid var(--chart-tooltip-border)',
+              color: 'var(--text-color)',
+              borderRadius: '8px',
+            }}
           />
-          <Legend />
-          <Bar dataKey="earnings" fill="#14b8a6" name="Earnings" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="earnings" name="Earnings" fill="var(--chart-bar-fill)" radius={[4, 4, 0, 0]} barSize={20} />
         </BarChart>
       </ResponsiveContainer>
     </div>

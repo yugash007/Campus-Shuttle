@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import ThemeToggle from './ThemeToggle';
@@ -19,7 +18,7 @@ const Header: React.FC = () => {
                 style={{cursor: 'pointer'}}
             >
                 <i className="fas fa-bus me-2" aria-hidden="true"></i>
-                <span>Campus Shuttle</span>
+                <span>AutoMate</span>
             </button>
             
             {student && (

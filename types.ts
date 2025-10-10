@@ -1,4 +1,5 @@
 
+
 export enum UserRole {
   STUDENT = 'student',
   DRIVER = 'driver',
@@ -56,6 +57,13 @@ export interface Ride {
   feedback?: string;
   bonus?: number; // For driver incentives
   completionDate?: string; // ISO string for when the ride was completed
+  cancellationReason?: string;
+}
+
+export interface WaitlistItem {
+  studentId: string;
+  timestamp: number;
+  rideDetails: Omit<Ride, 'id' | 'studentId' | 'date' | 'status'>
 }
 
 export interface ScheduledEvent {
@@ -73,6 +81,13 @@ export interface RidePlan {
   destination: string;
   forEvent: string;
   reason: string;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // Font Awesome icon class
 }
 
 export interface Student {
@@ -98,6 +113,7 @@ export interface Student {
   isOnWaitlist?: boolean;
   weeklySchedule?: { [eventId: string]: boolean };
   ridePlans?: { [planId: string]: boolean };
+  achievements?: { [achievementId: string]: boolean };
 }
 
 export interface Driver {

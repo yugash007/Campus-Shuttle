@@ -1,33 +1,34 @@
 
-import React from 'react';
-import StudentDashboard from './views/StudentDashboard';
-import DriverDashboard from './views/DriverDashboard';
-import DriverOnboarding from './views/DriverOnboarding';
-import { AuthScreen } from './views/AuthScreen';
+import React, { lazy, Suspense } from 'react';
 import { FirebaseProvider, useFirebase } from './contexts/FirebaseContext';
 import Header from './components/Header';
 import TyndallEffect from './components/TyndallEffect';
 import { NotificationProvider } from './contexts/NotificationContext';
 import NotificationToast from './components/NotificationToast';
-import ProfileScreen from './views/ProfileScreen';
 import OfflineIndicator from './components/OfflineIndicator';
-import PaymentScreen from './views/PaymentScreen';
-import SchedulerScreen from './views/SchedulerScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
+import LoadingSkeleton from './components/LoadingSkeleton';
+
+// --- Lazy-loaded Views ---
+const AuthScreen = lazy(() => import('./views/AuthScreen').then(module => ({ default: module.AuthScreen })));
+const StudentDashboard = lazy(() => import('./views/StudentDashboard'));
+const DriverDashboard = lazy(() => import('./views/DriverDashboard'));
+const DriverOnboarding = lazy(() => import('./views/DriverOnboarding'));
+const ProfileScreen = lazy(() => import('./views/ProfileScreen'));
+const PaymentScreen = lazy(() => import('./views/PaymentScreen'));
+const SchedulerScreen = lazy(() => import('./views/SchedulerScreen'));
+const HeatmapView = lazy(() => import('./views/HeatmapView'));
+
 
 const AppContent: React.FC = () => {
   const { authUser, student, driver, loading, view } = useFirebase();
 
   if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center vh-100">
-        <p className="text-white">Loading App...</p>
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
   if (!authUser) {
-    return <AuthScreen />;
+    return <Suspense fallback={<LoadingSkeleton />}><AuthScreen /></Suspense>;
   }
 
   const role = authUser.role;
@@ -35,7 +36,7 @@ const AppContent: React.FC = () => {
 
   // Driver onboarding check
   if (role === 'driver' && driver && !driver.hasCompletedOnboarding) {
-    return <DriverOnboarding />;
+    return <Suspense fallback={<LoadingSkeleton />}><DriverOnboarding /></Suspense>;
   }
 
   const renderView = () => {
@@ -46,16 +47,14 @@ const AppContent: React.FC = () => {
         return <PaymentScreen />;
       case 'scheduler':
         return <SchedulerScreen />;
+      case 'heatmap':
+        return <HeatmapView />;
       case 'dashboard':
       default:
         if (userLoaded) {
           return role === 'student' ? <StudentDashboard /> : <DriverDashboard />;
         }
-        return (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
-            <p className="text-white">Loading Dashboard...</p>
-          </div>
-        );
+        return <LoadingSkeleton />;
     }
   };
 
@@ -64,7 +63,9 @@ const AppContent: React.FC = () => {
       <Header />
       <main className="main-content">
         <div className="container">
-          {renderView()}
+          <Suspense fallback={<LoadingSkeleton />}>
+            {renderView()}
+          </Suspense>
         </div>
       </main>
     </>

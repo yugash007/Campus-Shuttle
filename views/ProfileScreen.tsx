@@ -1,11 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { Student, Driver } from '../types';
 import ProfilePicture from '../components/ProfilePicture';
+import { achievementsList } from '../data/achievements';
 
 // A small, self-contained component for displaying profile details in a consistent way.
-const ProfileDetailItem: React.FC<{ icon: string; label: string; value?: string | number }> = ({ icon, label, value }) => (
-    <div className="d-flex align-items-center mb-4">
+const ProfileDetailItem: React.FC<{ icon: string; label: string; value?: string | number; className?: string }> = ({ icon, label, value, className }) => (
+    <div className={`d-flex align-items-center ${className || 'mb-4'}`}>
         <i className={`fas ${icon} fa-fw me-3 text-muted`} style={{ width: '24px', fontSize: '1.2rem', textAlign: 'center' }}></i>
         <div>
             <div className="small text-muted">{label}</div>
@@ -142,15 +144,18 @@ const ProfileScreen: React.FC = () => {
                         <h4 className="mt-3 mb-1">{formData.name || userProfile.name}</h4>
                         <p className="text-muted mb-2">{authUser?.email}</p>
                         <span className={`badge text-capitalize ${userProfile.role === 'student' ? 'bg-primary' : 'bg-success'}`}>{userProfile.role}</span>
+                        
+                        {driver && driver.vehicleDetails && (
+                            <>
+                                <hr className="my-4" style={{borderColor: 'var(--card-border-color)'}}/>
+                                <div className="text-start">
+                                    <h5 className="section-title mb-3 text-center">Vehicle Details</h5>
+                                    <ProfileDetailItem icon="fa-car" label="Make & Model" value={`${driver.vehicleDetails.make} ${driver.vehicleDetails.model}`} />
+                                    <ProfileDetailItem icon="fa-id-card" label="License Plate" value={driver.vehicleDetails.licensePlate} className="mb-0" />
+                                </div>
+                            </>
+                        )}
                     </div>
-
-                     {driver && driver.vehicleDetails && (
-                        <div className="app-card mt-4 p-4">
-                            <h5 className="section-title mb-3">Vehicle</h5>
-                            <ProfileDetailItem icon="fa-car" label="Make & Model" value={`${driver.vehicleDetails.make} ${driver.vehicleDetails.model}`} />
-                            <ProfileDetailItem icon="fa-id-card" label="License Plate" value={driver.vehicleDetails.licensePlate} />
-                        </div>
-                    )}
                 </div>
 
                 {/* --- Right Column: Editable Details & Ride History --- */}
@@ -249,6 +254,23 @@ const ProfileScreen: React.FC = () => {
                                             <div className="col-md-6"><ProfileDetailItem icon="fa-mobile-alt" label="Contact Phone" value={student.emergencyContact.phone} /></div>
                                         </div>
                                     </>
+                                )}
+
+                                {student && (
+                                    <div className="mt-4">
+                                        <h5 className="section-title mb-3">Achievements</h5>
+                                        <div className="achievements-grid">
+                                            {achievementsList.map(ach => {
+                                                const isUnlocked = student.achievements?.[ach.id] || false;
+                                                return (
+                                                    <div key={ach.id} className={`achievement-badge ${!isUnlocked ? 'locked' : ''}`} title={isUnlocked ? ach.description : `Locked: ${ach.description}`}>
+                                                        <i className={`fas ${ach.icon} achievement-icon`}></i>
+                                                        <span className="achievement-name">{ach.name}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 )}
                             </>
                         )}

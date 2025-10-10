@@ -1,6 +1,6 @@
-# Campus Shuttle PWA
+# AutoMate PWA
 
-This is a Progressive Web App for a campus shuttle service, connecting students and drivers. It features ride booking, mocked live tracking, and driver incentives.
+This is a Progressive Web App for a campus ride-hailing service called AutoMate, connecting students and drivers. It features ride booking, mocked live tracking, and driver incentives.
 
 ## Features
 
@@ -16,10 +16,12 @@ This is a Progressive Web App for a campus shuttle service, connecting students 
 
 ## Tech Stack
 
-- React
-- TypeScript
-- Bootstrap & Font Awesome for styling
-- (No external APIs or backend services are used in this version. All data is mocked and managed in the client-side state.)
+- React & TypeScript
+- Firebase (Authentication, Realtime Database, Storage) for backend services.
+- Google Gemini API for AI-powered ride scheduling.
+- Google Maps Platform for mapping and routing.
+- Bootstrap & Font Awesome for styling.
+- Recharts for data visualization.
 
 ## Running the App
 

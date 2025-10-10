@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -52,7 +51,7 @@ const DriverOnboarding: React.FC = () => {
                 model: vehicleModel,
                 licensePlate,
             });
-            showNotification('Setup Complete!', 'Welcome to Campus Shuttle. You are now verified.');
+            showNotification('Setup Complete!', 'Welcome to AutoMate. You are now verified.');
             // The App component will automatically switch to the dashboard upon state change
         } catch (error) {
             showNotification('Error', 'Could not save details. Please try again.');
